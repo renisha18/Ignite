@@ -24,8 +24,22 @@ app.get("/health", (req, res) => {
 
 app.use("/auth", require("./routes/authRoutes"));
 app.use("/admin", require("./routes/adminRoutes"));
-// Further route mounts go here as each module is built, e.g.:
+
+// Both tracks serve /events, from separate route files so neither has
+// to edit the other's. MOUNT ORDER MATTERS between them: Express tries
+// mounted routers in order, and publicEventRoutes has a GET "/:eventId"
+// that would swallow the organizer's literal GET "/mine" (returning
+// 400 "eventId must be a positive integer") if it were reached first.
+// So the organizer router, which only has literal + write routes, must
+// be mounted BEFORE the public one.
+//
+// NOTE: routes/eventRoutes.js (organizer: POST /events, PUT/DELETE
+// /events/:eventId, GET /events/mine) exists and is fully implemented
+// but has never been mounted on either branch — those endpoints are
+// currently unreachable. This wasn't part of the merge conflict, so
+// it's left as-is; uncomment the line below to switch them on.
 // app.use("/events", require("./routes/eventRoutes"));
+app.use("/events", require("./routes/publicEventRoutes"));
 
 // Why errorHandler is registered LAST: Express only routes a request
 // into a 4-arg (err, req, res, next) middleware when something calls

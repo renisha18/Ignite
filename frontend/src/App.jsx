@@ -12,6 +12,7 @@ import VolunteerDashboard from "./pages/VolunteerDashboard";
 import OrganizerDashboard from "./pages/OrganizerDashboard";
 import AdminDashboard from "./pages/AdminDashboard";
 import Unauthorized from "./pages/Unauthorized";
+import volunteerRoutes from "./pages/volunteer/volunteerRoutes";
 import "./index.css";
 
 export default function App() {
@@ -25,7 +26,7 @@ export default function App() {
           <Route path="/unauthorized" element={<Unauthorized />} />
 
           <Route element={<ProtectedRoute roles={["volunteer"]} />}>
-            <Route path="/volunteer/dashboard" element={<VolunteerDashboard />} />
+                  {volunteerRoutes}
           </Route>
 
           <Route element={<ProtectedRoute roles={["organizer"]} />}>
