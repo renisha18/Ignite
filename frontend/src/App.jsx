@@ -9,7 +9,7 @@ import ProtectedRoute from "./components/ProtectedRoute";
 import Login from "./pages/Login";
 import Register from "./pages/Register";
 import VolunteerDashboard from "./pages/VolunteerDashboard";
-import OrganizerDashboard from "./pages/OrganizerDashboard";
+import organizerRoutes from "./pages/organizer/organizerRoutes";
 import AdminDashboard from "./pages/AdminDashboard";
 import Unauthorized from "./pages/Unauthorized";
 import volunteerRoutes from "./pages/volunteer/volunteerRoutes";
@@ -30,8 +30,8 @@ export default function App() {
           </Route>
 
           <Route element={<ProtectedRoute roles={["organizer"]} />}>
-            <Route path="/organizer/dashboard" element={<OrganizerDashboard />} />
-          </Route>
+  {organizerRoutes}
+</Route>
 
           <Route element={<ProtectedRoute roles={["admin"]} />}>
             <Route path="/admin/dashboard" element={<AdminDashboard />} />

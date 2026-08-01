@@ -1,0 +1,216 @@
+// Why this exists: create and edit are the same six fields with the
+// same rules, so they're one component in one modal rather than two
+// forms or two routes. Which mode it's in is decided by whether an
+// `event` prop was passed.
+//
+// Why a modal rather than /organizer/events/new and /:id/edit: the list
+// stays on screen behind it, there's no route state to keep in sync,
+// and it's less to build — the spec's "avoid unnecessary complexity".
+//
+// Depends on: components/ui/Modal.jsx, components/ui/Button.jsx,
+// components/FormInput.jsx, components/Alert.jsx,
+// services/eventService.js, services/validation.js,
+// services/errorMessage.js
+import { useEffect, useState } from "react";
+import Modal from "../ui/Modal";
+import Button from "../ui/Button";
+import FormInput from "../FormInput";
+import Alert from "../Alert";
+import { createEvent, updateEvent } from "../../services/eventService";
+import { validateEventForm } from "../../services/validation";
+import { getErrorMessage } from "../../services/errorMessage";
+
+// The <form> lives in the modal body but its submit button lives in the
+// modal footer, outside the form element. HTML's form="" attribute is
+// what connects them.
+const FORM_ID = "organizer-event-form";
+
+const EMPTY_FORM = {
+  title: "",
+  description: "",
+  location: "",
+  eventStart: "",
+  eventEnd: "",
+  applicationDeadline: "",
+};
+
+// Why this conversion is necessary rather than slicing the ISO string:
+// the API returns UTC ("2026-09-12T02:30:00.000Z" for an 08:00 IST
+// event), and <input type="datetime-local"> expects LOCAL wall-clock
+// time. Taking the first 16 characters of the ISO string would show
+// 02:30 in the edit form and then save that back as the new start time,
+// silently walking every event backwards by the UTC offset on each edit.
+function toDateTimeLocalValue(value) {
+  if (!value) return "";
+  const date = new Date(value);
+  if (Number.isNaN(date.getTime())) return "";
+  const pad = (n) => String(n).padStart(2, "0");
+  return (
+    `${date.getFullYear()}-${pad(date.getMonth() + 1)}-${pad(date.getDate())}` +
+    `T${pad(date.getHours())}:${pad(date.getMinutes())}`
+  );
+}
+
+function formFromEvent(event) {
+  if (!event) return EMPTY_FORM;
+  return {
+    title: event.title ?? "",
+    description: event.description ?? "",
+    location: event.location ?? "",
+    eventStart: toDateTimeLocalValue(event.eventStart),
+    eventEnd: toDateTimeLocalValue(event.eventEnd),
+    applicationDeadline: toDateTimeLocalValue(event.applicationDeadline),
+  };
+}
+
+export default function EventFormModal({ open, event, onClose, onSaved }) {
+  const isEdit = Boolean(event);
+
+  const [form, setForm] = useState(EMPTY_FORM);
+  const [fieldErrors, setFieldErrors] = useState({});
+  const [serverError, setServerError] = useState("");
+  const [saving, setSaving] = useState(false);
+
+  // Reset whenever the dialog opens, or opens onto a different event —
+  // otherwise the previous event's values would still be sitting in
+  // state the next time it's opened.
+  useEffect(() => {
+    if (!open) return;
+    setForm(formFromEvent(event));
+    setFieldErrors({});
+    setServerError("");
+  }, [open, event]);
+
+  function handleChange(e) {
+    const { name, value } = e.target;
+    setForm((prev) => ({ ...prev, [name]: value }));
+    // Clear this field's error as soon as it's touched, same as the
+    // auth forms do.
+    setFieldErrors((prev) => ({ ...prev, [name]: undefined }));
+  }
+
+  async function handleSubmit(e) {
+    e.preventDefault();
+    setServerError("");
+
+    const errors = validateEventForm(form);
+    if (Object.keys(errors).length > 0) {
+      setFieldErrors(errors);
+      return;
+    }
+
+    setSaving(true);
+    try {
+      // Sent as-is: the datetime-local strings are local wall-clock
+      // time, which is exactly what the backend normalises to MySQL
+      // DATETIME. Empty optional fields go up as "" and the backend
+      // stores NULL, which is how a value gets cleared on edit.
+      if (isEdit) {
+        await updateEvent(event.eventId, form);
+      } else {
+        await createEvent(form);
+      }
+      onSaved();
+    } catch (err) {
+      setServerError(
+        getErrorMessage(
+          err,
+          isEdit ? "Couldn't save your changes." : "Couldn't create the event."
+        )
+      );
+    } finally {
+      setSaving(false);
+    }
+  }
+
+  return (
+    <Modal
+      open={open}
+      onClose={saving ? () => {} : onClose}
+      size="lg"
+      title={isEdit ? "Edit event" : "Create event"}
+      description={
+        isEdit
+          ? "Changes are visible to volunteers as soon as you save."
+          : "Your event is published as soon as it's created."
+      }
+      footer={
+        <>
+          <Button variant="ghost" onClick={onClose} disabled={saving}>
+            Cancel
+          </Button>
+          <Button type="submit" form={FORM_ID} loading={saving}>
+            {isEdit ? "Save changes" : "Create event"}
+          </Button>
+        </>
+      }
+    >
+      <form
+        id={FORM_ID}
+        onSubmit={handleSubmit}
+        noValidate
+        className="flex flex-col gap-4"
+      >
+        <Alert variant="error">{serverError}</Alert>
+
+        <FormInput
+          label="Title"
+          name="title"
+          value={form.title}
+          onChange={handleChange}
+          error={fieldErrors.title}
+          placeholder="Beach Cleanup Drive"
+        />
+
+        <FormInput
+          label="Description (optional)"
+          name="description"
+          value={form.description}
+          onChange={handleChange}
+          error={fieldErrors.description}
+          placeholder="What will volunteers be doing?"
+          multiline
+          rows={3}
+        />
+
+        <FormInput
+          label="Location (optional)"
+          name="location"
+          value={form.location}
+          onChange={handleChange}
+          error={fieldErrors.location}
+          placeholder="Marina Beach, Chennai"
+        />
+
+        <div className="grid gap-4 sm:grid-cols-2">
+          <FormInput
+            label="Starts"
+            name="eventStart"
+            type="datetime-local"
+            value={form.eventStart}
+            onChange={handleChange}
+            error={fieldErrors.eventStart}
+          />
+
+          <FormInput
+            label="Ends (optional)"
+            name="eventEnd"
+            type="datetime-local"
+            value={form.eventEnd}
+            onChange={handleChange}
+            error={fieldErrors.eventEnd}
+          />
+        </div>
+
+        <FormInput
+          label="Application deadline (optional)"
+          name="applicationDeadline"
+          type="datetime-local"
+          value={form.applicationDeadline}
+          onChange={handleChange}
+          error={fieldErrors.applicationDeadline}
+        />
+      </form>
+    </Modal>
+  );
+}

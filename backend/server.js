@@ -38,7 +38,7 @@ app.use("/admin", require("./routes/adminRoutes"));
 // but has never been mounted on either branch — those endpoints are
 // currently unreachable. This wasn't part of the merge conflict, so
 // it's left as-is; uncomment the line below to switch them on.
-// app.use("/events", require("./routes/eventRoutes"));
+app.use("/events", require("./routes/eventRoutes"));
 app.use("/events", require("./routes/publicEventRoutes"));
 
 // Why errorHandler is registered LAST: Express only routes a request

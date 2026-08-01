@@ -1,16 +1,27 @@
-// Why this exists: application status shows up on Browse Events, My
-// Applications, My Team and History. One component means the five
-// statuses read identically everywhere and can't drift into "Applied"
-// on one screen and "Pending" on another.
+// Why this exists: status shows up all over both tracks — Browse
+// Events, My Applications, My Team, History, My Events, the organizer
+// top bar. One component means a status reads identically everywhere
+// and can't drift into "Applied" on one screen and "Pending" on another.
 //
-// The five keys are exactly the applications.status ENUM from
-// backend/schema.sql — don't invent a sixth here without a schema
-// change (and the schema is locked).
+// Why families rather than one flat map: the schema has three separate
+// status ENUMs and they overlap. `rejected` is both an application
+// status and an organization status; a single map can only give it one
+// label and colour. Each family below is exactly one ENUM from
+// backend/schema.sql (locked) — don't invent a value that isn't in the
+// column definition.
+//
+// Usage:
+//   <StatusChip status={application.status} />                    // default family
+//   <StatusChip status={event.status} type="event" />
+//   <StatusChip status={organization.status} type="organization" />
 //
 // Colors come only from the project palette: there is no dedicated
-// error red, so `rejected` uses the oxblood primary; `confirmed` uses
-// sage; everything provisional sits on muted.
-const STATUSES = {
+// error red, so genuinely negative states use the oxblood primary,
+// positive states use sage success, and anything provisional sits on
+// muted.
+
+// applications.status
+const APPLICATION_STATUSES = {
   applied: {
     label: "Applied",
     // Neutral, not a success and not a failure — the volunteer is waiting.
@@ -42,10 +53,69 @@ const STATUSES = {
   },
 };
 
-export default function StatusChip({ status }) {
-  // Unknown status renders visibly rather than silently vanishing —
-  // if the backend ever sends something unexpected, we want to see it.
-  const config = STATUSES[status] ?? {
+// organizations.status
+const ORGANIZATION_STATUSES = {
+  pending: {
+    label: "Pending approval",
+    // Same neutral treatment as `applied`: an org awaiting an admin is
+    // waiting, not failing.
+    className: "border-muted/50 bg-muted/10 text-ink/70",
+    notch: "bg-muted",
+  },
+  approved: {
+    label: "Approved",
+    className: "border-success/50 bg-success/15 text-success",
+    notch: "bg-success",
+  },
+  rejected: {
+    label: "Rejected",
+    className: "border-primary/40 bg-primary/10 text-primary",
+    notch: "bg-primary",
+  },
+};
+
+// events.status
+const EVENT_STATUSES = {
+  published: {
+    label: "Published",
+    // The only state in which volunteers can see and apply to the event.
+    className: "border-success/50 bg-success/15 text-success",
+    notch: "bg-success",
+  },
+  closed: {
+    label: "Closed",
+    // Applications shut, but the event is still going ahead — neutral,
+    // not negative.
+    className: "border-muted/50 bg-muted/10 text-ink/70",
+    notch: "bg-muted",
+  },
+  completed: {
+    label: "Completed",
+    // Gold: the event ran and certificates can follow. An achievement,
+    // not just an end state.
+    className: "border-gold/60 bg-gold/15 text-gold-dark",
+    notch: "bg-gold",
+  },
+  cancelled: {
+    label: "Cancelled",
+    className: "border-primary/40 bg-primary/10 text-primary",
+    notch: "bg-primary",
+  },
+};
+
+const FAMILIES = {
+  application: APPLICATION_STATUSES,
+  organization: ORGANIZATION_STATUSES,
+  event: EVENT_STATUSES,
+};
+
+export default function StatusChip({ status, type = "application" }) {
+  const family = FAMILIES[type] ?? APPLICATION_STATUSES;
+
+  // Unknown status renders visibly rather than silently vanishing — if
+  // the backend ever sends something unexpected, or a caller passes the
+  // wrong `type`, we want to see it rather than get a blank chip.
+  const config = family[status] ?? {
     label: status ?? "Unknown",
     className: "border-muted/40 bg-transparent text-muted",
     notch: "bg-muted/60",
@@ -67,4 +137,11 @@ export default function StatusChip({ status }) {
   );
 }
 
-export { STATUSES };
+export {
+  APPLICATION_STATUSES,
+  ORGANIZATION_STATUSES,
+  EVENT_STATUSES,
+  // Back-compat alias: the original export was the application family
+  // under this name, before the other two ENUMs needed representing.
+  APPLICATION_STATUSES as STATUSES,
+};
