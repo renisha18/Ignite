@@ -91,7 +91,7 @@ Frontend
 * Apply for Events
 * View Application Status
 * View Assigned Team
-* GPS Attendance
+* QR attendance
 * View Certificates
 * Download Certificates
 * Volunteer Profile
@@ -180,9 +180,7 @@ Each volunteer can mark attendance only once per event.
 
 Only eligible volunteers can successfully mark attendance.
 
-**Future Enhancement:** GPS verification and time-limited QR codes can be added in a later version.
 
----
 
 # Certificates
 
