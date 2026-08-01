@@ -94,11 +94,17 @@ backend/
 
 frontend/
   src/
-    pages/       # route-level screens (empty — next step)
-    components/  # shared UI pieces (empty — next step)
-    context/     # React context, e.g. AuthContext (empty — next step)
-    api/          # fetch wrappers per resource (empty — next step)
+    pages/       # route-level screens — Login, Register, Unauthorized,
+                 #   Volunteer/Organizer/Admin dashboards
+    components/  # shared UI — Alert, Button, FormInput, DashboardHeader,
+                 #   ProtectedRoute
+    context/     # AuthContext.jsx — session state + useAuth hook
+    layouts/     # AuthLayout.jsx
+    services/    # api.js (axios instance + 401 interceptor), authService.js,
+                 #   validation.js, errorMessage.js, roleRoutes.js
 ```
+
+Components never call axios directly — always go through `services/`.
 
 ## Git workflow
 

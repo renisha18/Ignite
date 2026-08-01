@@ -43,16 +43,16 @@ like the existing auth module: `Authorization: Bearer <token>`,
 | POST | `/assignments` | organizer (own event) | `{ applicationId, roleId }` | `{ assignment }` — server re-validates: application is `selected`/`confirmed`, role belongs to same event, role has capacity left, no existing active assignment for that volunteer+event (see `schema.sql` comment under table 9) |
 | DELETE | `/assignments/:assignmentId` | organizer (own) | — | `204` — sets `status='cancelled'`, doesn't hard-delete (keeps history) |
 
-### Attendance (organizer sets up, views)
+### Attendance (organizer displays the QR, views who scanned)
 | Method | Route | Auth | Body | Returns |
 |---|---|---|---|---|
-| POST | `/events/:eventId/location` | organizer (own) | `{ latitude, longitude, allowedRadiusMeters }` | `{ event }` |
-| GET | `/events/:eventId/attendance` | organizer (own) | — | `{ attendance: [{ volunteerId, name, roleTitle, checkInTime, checkOutTime, verificationStatus }] }` |
+| GET | `/events/:eventId/attendance-qr` | organizer (own) | — | `{ qrToken, expiresIn }` — see "How the QR works" below |
+| GET | `/events/:eventId/attendance` | organizer (own) | — | `{ attendance: [{ volunteerId, name, roleTitle, checkInTime, verificationStatus }] }` |
 
 ### Certificates
 | Method | Route | Auth | Body | Returns |
 |---|---|---|---|---|
-| POST | `/certificates` | organizer (own event) | `{ assignmentId }` | `{ certificate }` — only allowed if `attendance.verification_status = 'verified'` for that assignment |
+| POST | `/certificates` | organizer (own event) | `{ assignmentId }` | `{ certificate }` — only allowed if `attendance.verification_status = 'verified'` for that assignment. `hours_credited` is computed server-side from the event's own `event_start` → `event_end`. |
 
 ---
 
@@ -76,17 +76,55 @@ like the existing auth module: `Authorization: Bearer <token>`,
 |---|---|---|---|---|
 | GET | `/volunteers/me/journey` | volunteer | — | `{ journey: [...] }` — the "My Journey" timeline query already sketched in `schema.sql` |
 
-### Attendance (volunteer's side — GPS check-in/out)
+### Attendance (volunteer's side — scan the organizer's QR)
 | Method | Route | Auth | Body | Returns |
 |---|---|---|---|---|
-| POST | `/attendance/check-in` | volunteer | `{ assignmentId, latitude, longitude }` | `{ attendance }` — 403 if outside `allowedRadiusMeters` (Haversine, computed server-side, never trust client-computed distance) |
-| POST | `/attendance/check-out` | volunteer | `{ assignmentId }` | `{ attendance }` — triggers the hours-credit query from `schema.sql` |
+| POST | `/attendance/scan` | volunteer | `{ qrToken }` | `{ attendance }` — see "How the QR works" below |
 
 ### Certificates
 | Method | Route | Auth | Body | Returns |
 |---|---|---|---|---|
 | GET | `/volunteers/me/certificates` | volunteer | — | `{ certificates: [...] }` |
 | GET | `/certificates/:certificateId/download` | volunteer (own) or public via `certificateCode` | — | PDF or `{ certificate }`, TBD by whoever builds this — flag it in review, not a silent decision |
+
+---
+
+## How the QR works (shared — both tracks read this)
+
+Attendance is QR-based, per `PROJECT_SPEC.md`. There is **no GPS and no
+location check** anywhere in this system.
+
+The locked schema has no column to store a QR code, and we are not
+changing the schema. So the token *is* the state — a short-lived signed
+JWT, nothing persisted until someone actually scans:
+
+1. Organizer opens the event and calls `GET /events/:eventId/attendance-qr`.
+   The server signs a token with the existing `JWT_SECRET` via
+   `utils/token.js` — payload `{ eventId, purpose: "attendance" }`,
+   short expiry (~5 min). Returns `{ qrToken, expiresIn }`.
+2. The organizer's screen renders `qrToken` as a QR image and re-fetches
+   to refresh it when it expires. A stale screenshot of the QR therefore
+   stops working on its own.
+3. Volunteer scans it in the app and calls `POST /attendance/scan` with
+   `{ qrToken }` and their own Bearer token.
+4. Server verifies the token's signature, expiry and `purpose`, then
+   looks up the caller's own `assignments` row for that `eventId`. It
+   never accepts an `assignmentId` from the client — the volunteer is
+   identified by their JWT, the event by the QR. That's what stops one
+   volunteer marking attendance for another.
+5. On success it writes `check_in_time` and sets
+   `verification_status = 'verified'`.
+
+Rules that fall out of this:
+
+* **One scan per volunteer per event.** `attendance.assignment_id` is
+  UNIQUE, so a second scan is a `409`, not a duplicate row.
+* **Only eligible volunteers.** No active `assignments` row for that
+  event → `403`. Being `selected` on an application is not enough; the
+  volunteer must have been assigned to a role by the Team Builder.
+* **`check_out_time` is unused** and stays `NULL`. Hours come from the
+  event's own `event_start` → `event_end`, computed when the certificate
+  is generated. Don't build a check-out endpoint.
 
 ---
 
@@ -100,9 +138,10 @@ backend/
     applicationRoutes.js    <- organizer track (GET applications, PATCH status)
     volunteerRoutes.js      <- volunteer track (apply, withdraw, my applications/journey/certs)
     assignmentRoutes.js     <- organizer track (candidates, assign, unassign)
-    attendanceRoutes.js     <- SHARED — organizer POST /location + GET, volunteer POST check-in/out.
-                                Split into attendanceOrganizerRoutes.js /
-                                attendanceVolunteerRoutes.js if this becomes a conflict hotspot.
+    attendanceRoutes.js     <- SHARED — organizer GET /attendance-qr + GET /attendance,
+                                volunteer POST /attendance/scan. Split into
+                                attendanceOrganizerRoutes.js / attendanceVolunteerRoutes.js
+                                if this becomes a conflict hotspot.
     certificateRoutes.js    <- organizer generates, volunteer reads — same split option as above
 
   models/
