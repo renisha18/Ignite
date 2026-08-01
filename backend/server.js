@@ -24,6 +24,16 @@ app.get("/health", (req, res) => {
 
 app.use("/auth", require("./routes/authRoutes"));
 app.use("/admin", require("./routes/adminRoutes"));
+app.use("/volunteers", require("./routes/volunteerRoutes"));
+
+// Reference data, no auth. Deliberately separate from GET /events/skills,
+// which returns only skills in demand on a published event.
+app.use("/skills", require("./routes/skillRoutes"));
+
+// Volunteer's PATCH /applications/:id/withdraw. The organizer track's
+// applicationRoutes.js (GET /events/:id/applications, PATCH /:id) mounts
+// alongside this one when it lands — different paths, no conflict.
+app.use("/applications", require("./routes/volunteerApplicationRoutes"));
 
 // Both tracks serve /events, from separate route files so neither has
 // to edit the other's. MOUNT ORDER MATTERS between them: Express tries

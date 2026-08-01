@@ -76,6 +76,28 @@ like the existing auth module: `Authorization: Bearer <token>`,
 |---|---|---|---|---|
 | GET | `/volunteers/me/journey` | volunteer | — | `{ journey: [...] }` — the "My Journey" timeline query already sketched in `schema.sql` |
 
+### Profile
+| Method | Route | Auth | Body | Returns |
+|---|---|---|---|---|
+| GET | `/volunteers/me/profile` | volunteer | — | `{ profile: { volunteerId, fullName, email, bio, location, totalHours, reputationScore, skills: [{ skillId, name }] } }` |
+| PUT | `/volunteers/me/profile` | volunteer | `{ bio?, location?, skillIds?: [] }` | `{ profile }` — re-read after the write |
+
+`fullName` and `email` are read-only here: they live on `users`, and
+changing them is an auth concern. There is no endpoint for it.
+
+PUT is a **partial** update, and the three keys behave differently:
+
+* Key absent → that field is untouched.
+* `bio: ""` or `location: ""` → stored as `NULL` (i.e. "clear it").
+* `skillIds` absent → skills untouched.
+* `skillIds: []` → **removes every skill.** Distinct from absent; don't
+  send `[]` as a default.
+
+`skillIds` replaces the volunteer's `volunteer_skills` rows wholesale
+(delete-then-insert) inside a transaction. Duplicates in the array are
+de-duped server-side; unknown ids are a `400` listing them, not a
+silent no-op. `location` is `VARCHAR(255)` — longer is a `400`.
+
 ### Attendance (volunteer's side — scan the organizer's QR)
 | Method | Route | Auth | Body | Returns |
 |---|---|---|---|---|
@@ -86,6 +108,26 @@ like the existing auth module: `Authorization: Bearer <token>`,
 |---|---|---|---|---|
 | GET | `/volunteers/me/certificates` | volunteer | — | `{ certificates: [...] }` |
 | GET | `/certificates/:certificateId/download` | volunteer (own) or public via `certificateCode` | — | PDF or `{ certificate }`, TBD by whoever builds this — flag it in review, not a silent decision |
+
+---
+
+## Shared reference data
+
+| Method | Route | Auth | Body | Returns |
+|---|---|---|---|---|
+| GET | `/skills` | public | — | `{ skills: [{ skillId, name }] }` — every row in `skills` |
+
+Built by the volunteer track for the profile skill picker, but intended
+for the organizer track too: `POST /events/:eventId/roles` takes
+`skillIds`, and its form needs the same list. Call it rather than
+writing a second one. Frontend: `services/skillService.js`, and the
+picker itself is `components/ui/SkillMultiSelect.jsx` (in `ui/`, not
+`volunteer/`, precisely so the role form can reuse it).
+
+**Not** the same as `GET /events/skills`, which returns only skills
+attached to a role on a currently-published event — that one exists so
+the browse filter can't offer a dead end. The schema has no `category`
+column on `skills`, so neither route returns one.
 
 ---
 
