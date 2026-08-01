@@ -1,0 +1,23 @@
+@import "tailwindcss";
+
+/* Why colors are defined here (Tailwind v4 CSS-first config) rather
+   than in a tailwind.config.js theme.extend block: v4 generates
+   utility classes straight from CSS custom properties declared in an
+   @theme block. Defining --color-maroon and --color-gold here is what
+   makes bg-maroon, text-gold, border-maroon-dark etc. valid utility
+   classes everywhere in the app — one source of truth for the brand
+   palette, taken from the official Rotaract brand colors. */
+@theme {
+  --color-maroon: #A6192E;
+  --color-maroon-dark: #7A1322;
+  --color-maroon-light: #C13A4E;
+
+  --color-gold: #C39E4E;
+  --color-gold-light: #DDC08A;
+  --color-gold-dark: #9E7E3B;
+}
+
+body {
+  margin: 0;
+  font-family: "Segoe UI", system-ui, -apple-system, sans-serif;
+}
