@@ -23,12 +23,9 @@ app.get("/health", (req, res) => {
 });
 
 app.use("/auth", require("./routes/authRoutes"));
-app.use("/events", require("./routes/eventRoutes"));
-// Further route mounts go here as each module is built. Note the
-// volunteer track also mounts at "/events" (publicEventRoutes.js, for
-// the public GET reads) — two routers on the same prefix is fine,
-// Express falls through to the next one when this router has no
-// matching route. Keep it as its own adjacent line to avoid a conflict.
+app.use("/admin", require("./routes/adminRoutes"));
+// Further route mounts go here as each module is built, e.g.:
+// app.use("/events", require("./routes/eventRoutes"));
 
 // Why errorHandler is registered LAST: Express only routes a request
 // into a 4-arg (err, req, res, next) middleware when something calls

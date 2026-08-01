@@ -8,7 +8,7 @@
 // Depended on by: routes/eventRoutes.js
 const eventModel = require("../models/eventModel");
 const AppError = require("../utils/AppError");
-
+const organizationModel = require("../models/organizationModel");
 // Matches the schema's column widths (VARCHAR(255) for title and
 // location). description is TEXT — the 5000 cap is a sanity limit, not
 // a schema limit, to keep a runaway paste out of the DB.
@@ -186,8 +186,16 @@ function resolveOrgIdForCreate(req) {
 async function createEvent(req, res) {
   const orgId = resolveOrgIdForCreate(req);
   const fields = buildEventFields(req.body);
+  const org = await organizationModel.findById(req.user.orgId);
 
   let eventId;
+
+  if (!org || org.status !== "approved") {
+    throw new AppError(
+        403,
+        "Your organization must be approved before creating events."
+    );
+}
   try {
     eventId = await eventModel.create({
       orgId,
