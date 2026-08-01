@@ -23,6 +23,7 @@ app.get("/health", (req, res) => {
 });
 
 app.use("/auth", require("./routes/authRoutes"));
+app.use("/events", require("./routes/publicEventRoutes"));
 // Further route mounts go here as each module is built, e.g.:
 // app.use("/events", require("./routes/eventRoutes"));
 

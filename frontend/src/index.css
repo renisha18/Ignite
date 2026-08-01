@@ -1,11 +1,13 @@
 @import "tailwindcss";
+@config "../../tailwind.config.js";
 
 /* Why colors are defined here (Tailwind v4 CSS-first config) rather
    than in a tailwind.config.js theme.extend block: v4 generates
    utility classes straight from CSS custom properties declared in an
    @theme block. Defining --color-maroon and --color-gold here is what
    makes bg-maroon, text-gold, border-maroon-dark etc. valid utility
-   classes everywhere in the app — one source of truth for the brand
+   classes everywhere in the app —
+    one source of truth for the brand
    palette, taken from the official Rotaract brand colors. */
 @theme {
   --color-maroon: #A6192E;

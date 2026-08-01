@@ -4,7 +4,22 @@
     <meta charset="UTF-8" />
     <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>frontend</title>
+    <title>Ignite</title>
+
+    <!-- Fraunces (display/headings), Inter (body/UI), IBM Plex Mono
+         (stats, IDs, certificate codes). preconnect shaves a round trip
+         off the font fetch; display=swap paints text in the fallback
+         immediately rather than blocking on the download.
+         These map to font-display / font-sans / font-mono, declared in
+         tailwind.config.js — which is not loaded yet, see the note at
+         the top of that file. Until then the families load but nothing
+         applies them. -->
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link
+      href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,400;9..144,500;9..144,600;9..144,700&family=IBM+Plex+Mono:wght@400;500;600&family=Inter:wght@400;500;600;700&display=swap"
+      rel="stylesheet"
+    />
   </head>
   <body>
     <div id="root"></div>
