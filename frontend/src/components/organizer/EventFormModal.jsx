@@ -105,12 +105,16 @@ export default function EventFormModal({ open, event, onClose, onSaved }) {
       // time, which is exactly what the backend normalises to MySQL
       // DATETIME. Empty optional fields go up as "" and the backend
       // stores NULL, which is how a value gets cleared on edit.
+      // The saved event is handed back so the caller can act on it —
+      // MyEvents uses the new eventId to open the roles dialog straight
+      // after a create, since roles can't exist before the event does.
       if (isEdit) {
-        await updateEvent(event.eventId, form);
+        const saved = await updateEvent(event.eventId, form);
+        onSaved(saved, { created: false });
       } else {
-        await createEvent(form);
+        const created = await createEvent(form);
+        onSaved(created, { created: true });
       }
-      onSaved();
     } catch (err) {
       setServerError(
         getErrorMessage(

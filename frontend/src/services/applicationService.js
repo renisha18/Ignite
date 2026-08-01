@@ -44,26 +44,35 @@ export async function withdrawApplication(applicationId) {
 // ---------------------------------------------------------------------
 // Organizer track — application review
 //
-// Mirrors the "Applications (organizer's side)" table in
-// docs/api-contract.md. Both are stubs: the backend isn't built yet.
+// Live against backend/routes/applicationRoutes.js.
 // ---------------------------------------------------------------------
 
 // GET /events/:eventId/applications
-// returns: [{ applicationId, volunteer: {...}, status, motivation, appliedAt }]
-// 403 if the event belongs to another organization.
+// returns: [{ applicationId, eventId, status, motivation, appliedAt,
+//             decidedAt, volunteerId, fullName, email, reputationScore,
+//             preferredRole: { roleId, title } | null }]
+//
+// Withdrawn applications are excluded server-side — the volunteer pulled
+// out, so there's no decision left to make. 404 if the event doesn't
+// exist, 403 if it belongs to another organization.
 export async function getApplicationsForEvent(eventId) {
-  // return (await api.get(`/events/${eventId}/applications`)).data.applications;
-  throw new Error("Not implemented: applicationService.getApplicationsForEvent");
+  const { data } = await api.get(`/events/${eventId}/applications`);
+  return data.applications;
 }
 
 // PATCH /applications/:applicationId
-// body: { status: "selected" | "rejected" }
-// returns: { application }
+// body: { status: "applied" | "selected" | "confirmed" | "rejected" }
+// returns: the updated application, in the same shape the list returns —
+//          so the caller can swap the record wholesale rather than
+//          merging fields.
 //
-// Only those two values are accepted — 'confirmed' and 'withdrawn' are
-// not the organizer's to set. Being 'selected' is not the same as being
-// assigned: assignment to a role happens separately, in Team Builder.
+// Movement between these four is unrestricted in both directions, so a
+// decision can be undone by setting the status back to 'applied'.
+// 'withdrawn' is not settable here: that's the volunteer's own action.
+//
+// Being 'selected' is not the same as being assigned — assignment to a
+// specific role happens separately, in Team Builder.
 export async function updateApplicationStatus(applicationId, status) {
-  // return (await api.patch(`/applications/${applicationId}`, { status })).data.application;
-  throw new Error("Not implemented: applicationService.updateApplicationStatus");
+  const { data } = await api.patch(`/applications/${applicationId}`, { status });
+  return data.application;
 }

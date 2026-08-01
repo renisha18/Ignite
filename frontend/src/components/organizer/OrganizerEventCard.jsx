@@ -41,10 +41,45 @@ function MetaRow({ label, children }) {
   );
 }
 
-export default function OrganizerEventCard({ event, onEdit, onDelete }) {
+// Deliberately the same "title filled/capacity" readout the volunteer's
+// event detail page shows, so the organizer sees exactly what they're
+// publishing. `roles` comes from GET /events/mine, which reuses the same
+// query the volunteer endpoints do.
+function RoleChip({ title, capacity, filledCount }) {
+  const isFull = capacity > 0 && filledCount >= capacity;
+
+  return (
+    <span
+      className={`relative inline-flex items-center overflow-hidden rounded-full border py-0.5 pl-3.5 pr-2.5 text-xs ${
+        isFull
+          ? "border-gold/60 bg-gold/15 text-gold-dark"
+          : "border-muted/40 bg-muted/10 text-ink/70"
+      }`}
+    >
+      <span
+        aria-hidden="true"
+        className={`absolute -left-1 top-1/2 h-1.5 w-1.5 -translate-y-1/2 rotate-45 ${
+          isFull ? "bg-gold" : "bg-muted"
+        }`}
+      />
+      {title}
+      <span className="ml-1.5 font-mono text-[11px] tabular-nums">
+        {filledCount}/{capacity}
+      </span>
+    </span>
+  );
+}
+
+export default function OrganizerEventCard({
+  event,
+  onEdit,
+  onDelete,
+  onManageRoles,
+}) {
   const starts = formatDateTime(event.eventStart);
   const ends = formatDateTime(event.eventEnd);
   const deadline = formatDateTime(event.applicationDeadline);
+  const roles = event.roles ?? [];
 
   return (
     <Card as="li" className="list-none">
@@ -69,7 +104,33 @@ export default function OrganizerEventCard({ event, onEdit, onDelete }) {
         {deadline && <MetaRow label="Apply by">{deadline}</MetaRow>}
       </div>
 
+      <div className="mt-4 border-t border-muted/25 pt-4">
+        <p className="font-mono text-[10px] uppercase tracking-[0.14em] text-muted">
+          Roles
+        </p>
+        {roles.length === 0 ? (
+          // Not a neutral "none yet": with no roles the event is live but
+          // has nothing for a volunteer to apply to, which is worth
+          // saying plainly on the card rather than leaving to be noticed.
+          <p className="mt-1.5 text-sm text-muted">
+            None yet — volunteers can see this event but have nothing to apply
+            for.
+          </p>
+        ) : (
+          <ul className="mt-2 flex flex-wrap gap-2">
+            {roles.map((role) => (
+              <li key={role.roleId}>
+                <RoleChip {...role} />
+              </li>
+            ))}
+          </ul>
+        )}
+      </div>
+
       <div className="mt-5 flex items-center justify-end gap-2 border-t border-muted/25 pt-4">
+        <Button variant="secondary" onClick={() => onManageRoles(event)}>
+          {roles.length === 0 ? "Add roles" : "Manage roles"}
+        </Button>
         <Button variant="secondary" onClick={() => onEdit(event)}>
           Edit
         </Button>

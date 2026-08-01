@@ -164,6 +164,111 @@ function toEventResponse(row) {
 }
 
 // ---------------------------------------------------------------------
+// Organizer track — event roles
+//
+// event_roles is where "how many volunteers does this category need"
+// lives: one row per role, `capacity` = participants required. The
+// volunteer read path already surfaces these (rolesSummaryFor below);
+// these are the writes that were missing.
+// ---------------------------------------------------------------------
+
+// Same whitelist reasoning as UPDATABLE_COLUMNS above — only these two
+// columns are addressable through updateRole(). event_id is absent on
+// purpose: moving a role between events would strand its assignments.
+const UPDATABLE_ROLE_COLUMNS = {
+  title: "title",
+  capacity: "capacity",
+};
+
+async function createRole({ eventId, title, capacity }, conn = pool) {
+  const [result] = await conn.query(
+    "INSERT INTO event_roles (event_id, title, capacity) VALUES (?, ?, ?)",
+    [eventId, title, capacity]
+  );
+  return result.insertId;
+}
+
+// Raw row or null. Carries event_id, which is what the controller needs
+// to run the ownership check — a role is owned transitively, through
+// the event it belongs to.
+async function findRoleById(roleId) {
+  const [rows] = await pool.query(
+    "SELECT * FROM event_roles WHERE role_id = ?",
+    [roleId]
+  );
+  return rows[0] || null;
+}
+
+async function updateRole(roleId, fields, conn = pool) {
+  const setClauses = [];
+  const values = [];
+
+  for (const [field, column] of Object.entries(UPDATABLE_ROLE_COLUMNS)) {
+    if (fields[field] !== undefined) {
+      setClauses.push(`${column} = ?`);
+      values.push(fields[field]);
+    }
+  }
+
+  if (setClauses.length === 0) return 0;
+
+  values.push(roleId);
+  const [result] = await conn.query(
+    `UPDATE event_roles SET ${setClauses.join(", ")} WHERE role_id = ?`,
+    values
+  );
+  return result.affectedRows;
+}
+
+// role_skills cascades with the role. applications.preferred_role_id and
+// assignments.role_id do NOT — both are plain FKs, so MySQL refuses to
+// delete a role that a volunteer has asked for or been assigned to. The
+// controller turns that refusal into a 409.
+async function removeRole(roleId, conn = pool) {
+  const [result] = await conn.query(
+    "DELETE FROM event_roles WHERE role_id = ?",
+    [roleId]
+  );
+  return result.affectedRows;
+}
+
+// How many volunteers currently hold a seat in this role. 'cancelled'
+// assignments are excluded — they're kept for history and don't occupy
+// capacity, the same rule rolesSummaryFor uses for filledCount.
+async function countAssignmentsForRole(roleId) {
+  const [[row]] = await pool.query(
+    `SELECT COUNT(*) AS assignedCount
+       FROM assignments
+      WHERE role_id = ? AND status = 'assigned'`,
+    [roleId]
+  );
+  return Number(row.assignedCount);
+}
+
+// Replaces a role's skill set wholesale rather than diffing: the API
+// takes the full skillIds array as the desired end state, so delete-then
+// -insert is both simpler and exactly what the caller asked for. Callers
+// pass a transaction connection so a partial swap can't be committed.
+async function replaceRoleSkills(roleId, skillIds, conn = pool) {
+  await conn.query("DELETE FROM role_skills WHERE role_id = ?", [roleId]);
+  if (skillIds.length === 0) return;
+
+  await conn.query("INSERT INTO role_skills (role_id, skill_id) VALUES ?", [
+    skillIds.map((skillId) => [roleId, skillId]),
+  ]);
+}
+
+function toRoleResponse(row) {
+  if (!row) return null;
+  return {
+    roleId: row.role_id,
+    eventId: row.event_id,
+    title: row.title,
+    capacity: row.capacity,
+  };
+}
+
+// ---------------------------------------------------------------------
 // Volunteer track — public reads
 //
 // These select explicit camelCase aliases rather than going through
@@ -183,7 +288,10 @@ function toEventResponse(row) {
 // stay in the table for history (schema.sql, table 9) and must not
 // occupy a seat.
 //
-// Not exported: an internal helper for the two functions below.
+// Now exported (it began as an internal helper for the two volunteer
+// reads below): GET /events/mine reuses it so the organizer's own list
+// carries the identical roles shape volunteers see, rather than a second
+// query that could drift from this one. Query and signature unchanged.
 async function rolesSummaryFor(eventIds) {
   const byEvent = new Map();
   if (eventIds.length === 0) return byEvent;
@@ -371,20 +479,31 @@ async function listFilterSkills() {
 }
 
 // ---------------------------------------------------------------------
-// One exports block for both tracks. rolesSummaryFor is intentionally
-// absent — it's an internal helper, not part of the model's API.
+// One exports block for both tracks.
 // ---------------------------------------------------------------------
 module.exports = {
   // shared
   EVENT_STATUSES,
+  // Shared read: the volunteer list/detail and the organizer's
+  // /events/mine all render roles from this one query.
+  rolesSummaryFor,
 
-  // organizer track
+  // organizer track — events
   create,
   findById,
   listByOrg,
   update,
   remove,
   toEventResponse,
+
+  // organizer track — event roles
+  createRole,
+  findRoleById,
+  updateRole,
+  removeRole,
+  countAssignmentsForRole,
+  replaceRoleSkills,
+  toRoleResponse,
 
   // volunteer track
   listPublishedEvents,
