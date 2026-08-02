@@ -1,11 +1,8 @@
 // Why this file exists: the single entrypoint that wires together
-// config, middleware, and routes. Nothing else in the backend starts
-// the server — everything else exports things for THIS file to use.
-//
-// Depends on: config/db.js (indirectly, via route files once they
-// exist), whatever gets mounted under app.use(...) below.
-// Depended on by: nothing — this is the top of the dependency tree.
+// config, middleware, and routes.
+
 require("dotenv").config();
+
 const express = require("express");
 const cors = require("cors");
 
@@ -14,18 +11,25 @@ const app = express();
 app.use(cors());
 app.use(express.json());
 
-// Health check — confirms the server (and later, the DB pool) is
-// alive. Useful during setup and again during the hackathon when
-// something's not responding and you need to rule out "is the server
-// even running" in five seconds.
+
+// Health check
 app.get("/health", (req, res) => {
   res.json({ status: "ok" });
 });
 
+
+// Authentication
 app.use("/auth", require("./routes/authRoutes"));
+
+
+// Admin routes
 app.use("/admin", require("./routes/adminRoutes"));
+
+
+// Volunteer routes
 app.use("/volunteers", require("./routes/volunteerRoutes"));
 
+<<<<<<< HEAD
 // Reference data
 app.use("/skills", require("./routes/skillRoutes"));
 
@@ -88,15 +92,128 @@ app.use(
 
 // Role routes
 app.use("/roles", require("./routes/roleRoutes").rolesRouter);
+=======
 
-// Why errorHandler is registered LAST: Express only routes a request
-// into a 4-arg (err, req, res, next) middleware when something calls
-// next(err) — every route above wraps its handler in asyncHandler, so
-// a thrown AppError ends up here instead of crashing the process.
+// Reference data
+app.use("/skills", require("./routes/skillRoutes"));
+
+
+// ===============================
+// Application Routes
+// ===============================
+
+// Volunteer application actions
+app.use(
+  "/applications",
+  require("./routes/volunteerApplicationRoutes")
+);
+
+// Organizer application management
+app.use(
+  "/applications",
+  require("./routes/applicationRoutes").applicationsRouter
+);
+
+
+// ===============================
+// Certificate Routes
+// ===============================
+
+app.use(
+  "/certificates",
+  require("./routes/certificateRoutes")
+);
+
+
+// ===============================
+// Attendance QR Routes
+// ===============================
+
+app.use(
+  require("./routes/attendanceRoutes")
+);
+
+
+// ===============================
+// Event Routes
+// ===============================
+
+// Organizer event routes
+// Must come before public routes
+app.use(
+  "/events",
+  require("./routes/eventRoutes")
+);
+
+
+// Event role management
+app.use(
+  "/events",
+  require("./routes/roleRoutes").eventRolesRouter
+);
+
+
+// Event application management
+app.use(
+  "/events",
+  require("./routes/applicationRoutes").eventApplicationsRouter
+);
+
+
+// Smart team builder candidate routes
+app.use(
+  "/events",
+  require("./routes/assignmentRoutes").eventCandidatesRouter
+);
+
+
+// Public event routes
+app.use(
+  "/events",
+  require("./routes/publicEventRoutes")
+);
+
+
+// ===============================
+// Assignment Routes
+// ===============================
+
+app.use(
+  "/assignments",
+  require("./routes/assignmentRoutes").assignmentsRouter
+);
+
+
+// ===============================
+// Role Routes
+// ===============================
+
+app.use(
+  "/roles",
+  require("./routes/roleRoutes").rolesRouter
+);
+
+
+// ===============================
+// Error Handler
+// MUST be last middleware
+// ===============================
+>>>>>>> feature/organizer
+
 const errorHandler = require("./middleware/errorHandler");
+
 app.use(errorHandler);
 
+
+// ===============================
+// Start Server
+// ===============================
+
 const PORT = process.env.PORT || 4000;
+<<<<<<< HEAD
+=======
+
+>>>>>>> feature/organizer
 app.listen(PORT, () =>
   console.log(`Ignite API running on http://localhost:${PORT}`)
 );
