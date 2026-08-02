@@ -55,10 +55,24 @@ app.use("/applications", require("./routes/applicationRoutes").applicationsRoute
 app.use("/events", require("./routes/eventRoutes"));
 app.use("/events", require("./routes/roleRoutes").eventRolesRouter);
 app.use("/events", require("./routes/applicationRoutes").eventApplicationsRouter);
+app.use("/events", require("./routes/assignmentRoutes").eventCandidatesRouter);
 app.use("/events", require("./routes/publicEventRoutes"));
+
+// Smart Team Builder writes: POST /assignments (place or move) and
+// DELETE /assignments/:assignmentId (soft-cancel).
+app.use("/assignments", require("./routes/assignmentRoutes").assignmentsRouter);
 
 // PUT|DELETE /roles/:roleId — the other half of roleRoutes.js.
 app.use("/roles", require("./routes/roleRoutes").rolesRouter);
+// Organizer issues (POST /certificates), volunteer downloads
+// (GET /certificates/:id/download). The volunteer's own list lives at
+// GET /volunteers/me/certificates, mounted above under /volunteers.
+//app.use("/certificates", require("./routes/certificateRoutes"));
+
+// QR attendance. Mounted without a prefix because it spans two — the
+// organizer's routes live under /events/:eventId/... and the volunteer's
+// under /attendance/... — so the router declares full paths itself.
+//app.use(require("./routes/attendanceRoutes"));
 
 // Why errorHandler is registered LAST: Express only routes a request
 // into a 4-arg (err, req, res, next) middleware when something calls
