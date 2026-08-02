@@ -1,10 +1,12 @@
-// The organizer's event lifecycle screen: list, create, edit, delete.
-// Per docs/api-contract.md's Events section.
+// The organizer's event lifecycle screen: list, create, edit, delete,
+// and manage each event's roles. Per docs/api-contract.md's Events and
+// Event roles sections.
 //
-// Event roles are deliberately absent — POST /events/:eventId/roles and
-// /roles/:roleId aren't built on the backend yet, so a roles editor
-// here would 404 on every action. Roles ship as one feature (backend
-// plus UI) in a later session; eventService already holds the calls.
+// Roles are handled in their own dialog rather than inside the event
+// form, because POST /events/:eventId/roles needs an eventId that
+// doesn't exist until the event is created. Creating an event therefore
+// opens the roles dialog straight afterwards — that's the "sequential"
+// flow: event first, then its roles, each saving independently.
 //
 // Depends on: services/eventService.js, services/errorMessage.js,
 // components/ui/*, components/organizer/*
@@ -16,6 +18,7 @@ import Card from "../../components/ui/Card";
 import Alert from "../../components/Alert";
 import OrganizerEventCard from "../../components/organizer/OrganizerEventCard";
 import EventFormModal from "../../components/organizer/EventFormModal";
+import EventRolesModal from "../../components/organizer/EventRolesModal";
 import ConfirmDialog from "../../components/organizer/ConfirmDialog";
 import { getMyEvents, deleteEvent } from "../../services/eventService";
 import { getErrorMessage } from "../../services/errorMessage";
@@ -30,6 +33,12 @@ export default function MyEvents() {
   // null means "create"; an event object means "edit that one".
   const [formOpen, setFormOpen] = useState(false);
   const [editingEvent, setEditingEvent] = useState(null);
+
+  // Tracked by id, not by object: the roles dialog stays open across
+  // refetches, and holding a snapshot would leave it rendering the role
+  // list as it was before the change it just made.
+  const [rolesEventId, setRolesEventId] = useState(null);
+  const rolesEvent = events.find((e) => e.eventId === rolesEventId) ?? null;
 
   const [deleteTarget, setDeleteTarget] = useState(null);
   const [deleting, setDeleting] = useState(false);
@@ -70,10 +79,15 @@ export default function MyEvents() {
   // the list is ordered by event_start, so an edited date would need
   // re-sorting anyway, and one extra request is cheaper than a
   // client-side copy of the server's ordering rules.
-  async function handleSaved() {
+  async function handleSaved(saved, { created } = {}) {
     setFormOpen(false);
     setEditingEvent(null);
     await load();
+
+    // A new event has no roles, and an event with no roles gives
+    // volunteers nothing to apply for — so go straight there rather than
+    // leaving it as something to remember later.
+    if (created && saved?.eventId) setRolesEventId(saved.eventId);
   }
 
   function requestDelete(event) {
@@ -151,6 +165,7 @@ export default function MyEvents() {
               event={event}
               onEdit={openEdit}
               onDelete={requestDelete}
+              onManageRoles={(target) => setRolesEventId(target.eventId)}
             />
           ))}
         </ul>
@@ -161,6 +176,13 @@ export default function MyEvents() {
         event={editingEvent}
         onClose={() => setFormOpen(false)}
         onSaved={handleSaved}
+      />
+
+      <EventRolesModal
+        open={Boolean(rolesEvent)}
+        event={rolesEvent}
+        onClose={() => setRolesEventId(null)}
+        onChanged={load}
       />
 
       <ConfirmDialog

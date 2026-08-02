@@ -233,7 +233,22 @@ async function listMyEvents(req, res) {
   }
 
   const rows = await eventModel.listByOrg(req.user.orgId);
-  res.json({ events: rows.map((row) => eventModel.toEventResponse(row)) });
+  const events = rows.map((row) => eventModel.toEventResponse(row));
+
+  // Attach the same roles shape the volunteer endpoints return, via the
+  // same query. Without this an organizer couldn't see the capacity they
+  // set while volunteers could — the two sides showing different data
+  // for one event. One extra query for the whole page, not per event.
+  const rolesByEvent = await eventModel.rolesSummaryFor(
+    events.map((event) => event.eventId)
+  );
+
+  res.json({
+    events: events.map((event) => ({
+      ...event,
+      roles: rolesByEvent.get(event.eventId) ?? [],
+    })),
+  });
 }
 
 // -------------------------------------------------------------
@@ -276,4 +291,14 @@ async function deleteEvent(req, res) {
   res.status(204).end();
 }
 
-module.exports = { createEvent, listMyEvents, updateEvent, deleteEvent };
+module.exports = {
+  createEvent,
+  listMyEvents,
+  updateEvent,
+  deleteEvent,
+  // Exported for controllers/roleController.js. A role is owned
+  // transitively — through the event it belongs to — so the roles
+  // endpoints need this exact check. Exporting it beats a second copy
+  // that could drift from this one.
+  loadOwnedEvent,
+};

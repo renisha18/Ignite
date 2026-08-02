@@ -33,15 +33,103 @@ like the existing auth module: `Authorization: Bearer <token>`,
 ### Applications (organizer's side of the flow)
 | Method | Route | Auth | Body | Returns |
 |---|---|---|---|---|
-| GET | `/events/:eventId/applications` | organizer (own) | — | `{ applications: [{ applicationId, volunteer: {...}, status, motivation, appliedAt }] }` |
-| PATCH | `/applications/:applicationId` | organizer (own event) | `{ status: "selected" \| "rejected" }` | `{ application }` |
+| GET | `/events/:eventId/applications` | organizer (own) | — | `{ applications: [...] }` — see shape below |
+| PATCH | `/applications/:applicationId` | organizer (own event) | `{ status: "applied" \| "selected" \| "confirmed" \| "rejected" }` | `{ application }` — same shape as the list |
+
+Application shape (flat, not nested under `volunteer`):
+
+```jsonc
+{ "applicationId", "eventId", "status", "motivation", "appliedAt", "decidedAt",
+  "volunteerId", "fullName", "email", "reputationScore",
+  "preferredRole": { "roleId", "title" }   // null if none
+}
+```
+
+`withdrawn` applications are excluded from the list — the volunteer
+pulled out, so there's no decision left to make. PATCH accepts all four
+organizer-managed statuses and moves between them freely in either
+direction, so a decision can be undone by setting `applied`;
+`decided_at` is set on a decision and cleared when moving back to
+`applied`. `withdrawn` is not settable here — that's the volunteer's own
+action.
 
 ### Smart Team Builder (drag & drop)
 | Method | Route | Auth | Body | Returns |
 |---|---|---|---|---|
-| GET | `/events/:eventId/candidates` | organizer (own) | — | `{ roles: [{ roleId, title, capacity, candidates: [{ volunteerId, name, skillMatch, pastEvents, reputationScore }] }] }` — one call, pre-grouped by role, built from the ranking query already sketched in `schema.sql` |
-| POST | `/assignments` | organizer (own event) | `{ applicationId, roleId }` | `{ assignment }` — server re-validates: application is `selected`/`confirmed`, role belongs to same event, role has capacity left, no existing active assignment for that volunteer+event (see `schema.sql` comment under table 9) |
+| GET | `/events/:eventId/candidates` | organizer (own) | — | the whole board in one call — see shape below |
+| POST | `/assignments` | organizer (own event) | `{ applicationId, roleId }` | `{ assignment }` — places **or moves**; see below |
 | DELETE | `/assignments/:assignmentId` | organizer (own) | — | `204` — sets `status='cancelled'`, doesn't hard-delete (keeps history) |
+
+**Board response** (`GET /events/:eventId/candidates`). Reshaped from the
+original role-grouped `candidates` list: the board renders two
+independent views of the same data — volunteers grouped by their own
+skills on the left, roles on the right — and a role-grouped payload can
+only serve one of them. One call renders the entire screen.
+
+```jsonc
+{
+  "event": { "eventId", "title" },
+  "roles": [{
+    "roleId", "title", "capacity", "assignedCount",
+    "requiredSkills": [{ "skillId", "name" }],
+    "assignments": [{ "assignmentId", "volunteerId", "fullName",
+                      "reputationScore", "skillMismatch", "missingSkills": ["…"] }]
+  }],
+  "volunteers": [{
+    "volunteerId", "applicationId", "applicationStatus", "fullName",
+    "reputationScore",
+    "skills": [{ "skillId", "name" }],
+    "preferredRole": { "roleId", "title" },        // null if none
+    "assignment": { "assignmentId", "roleId", "roleTitle" }   // null if unassigned
+  }],
+  "skillGroups": [{ "skillId", "name", "volunteerIds": [1, 2] }]
+}
+```
+
+* Only `selected` and `confirmed` applicants appear. Pending, rejected
+  and withdrawn are filtered out in SQL.
+* `volunteers` is sorted `reputation_score DESC`, so every group inherits
+  that order.
+* `skillGroups` holds **ids into `volunteers`**, not copies — a volunteer
+  with three skills is sent once and listed in three groups. Grouping is
+  by the volunteer's own `volunteer_skills`, not by role requirements.
+* A group with `"skillId": null` is the **"No skills listed"** bucket and
+  is always last, so a skill-less volunteer is still visible and
+  draggable rather than silently unassignable.
+* `skillMismatch` is `true` when the role requires at least one skill the
+  volunteer doesn't have; `missingSkills` names them. A role with no
+  required skills never mismatches. Computed server-side — clients must
+  not recalculate it.
+
+**POST `/assignments` places or moves.** `assignments` has
+`UNIQUE (volunteer_id, event_id)` and unassign is a soft delete, so a
+cancelled row still occupies the unique slot: a volunteer can only ever
+have **one** `assignments` row per event. The server therefore INSERTs
+only when no row exists and otherwise **UPDATEs** it — which also revives
+a cancelled row. Cancel-then-insert would fail with `ER_DUP_ENTRY`. The
+move is a single UPDATE, so the volunteer is never momentarily
+unassigned.
+
+Validated inside one transaction: the application exists, is
+`selected`/`confirmed`, and belongs to the same event as the role; the
+role has a free seat. Capacity is read after a `SELECT … FOR UPDATE` on
+the `event_roles` row, so concurrent assignments serialize and can't
+exceed capacity. A full role is a `409` whose message names it.
+
+Response — everything needed to update the board in place, so the client
+never refetches:
+
+```jsonc
+{ "assignment": {
+  "assignmentId", "applicationId", "volunteerId", "eventId",
+  "roleId", "roleTitle", "fullName", "reputationScore", "status",
+  "skillMismatch", "missingSkills": ["…"],
+  "previousRoleId": 3          // null on a first placement
+}}
+```
+
+`previousRoleId` is the role they came from, so the caller knows which
+role's list to remove the card from.
 
 ### Attendance (organizer displays the QR, views who scanned)
 | Method | Route | Auth | Body | Returns |

@@ -131,11 +131,145 @@ async function withdrawApplication(applicationId, volunteerId) {
   return result.affectedRows;
 }
 
+// ---------------------------------------------------------------------
+// Organizer track — application review
+//
+// Appended per the shared-file rule; nothing above is modified.
+// ---------------------------------------------------------------------
+
+// What an organizer may set an application to. 'withdrawn' is absent
+// deliberately — that's the volunteer's own action (withdrawApplication
+// above), not a decision anyone else makes on their behalf.
+const ORGANIZER_SETTABLE_STATUSES = [
+  "applied",
+  "selected",
+  "confirmed",
+  "rejected",
+];
+
+// One column list, shared by the list and single-row reads below, so the
+// two can't drift into returning different shapes for the same record.
+//
+// Why every column is named explicitly instead of `u.*`: this joins the
+// `users` table, which holds password_hash. A wildcard here would put a
+// bcrypt hash in an API response the first time someone stopped reading
+// carefully. The only user columns that exist in this string are the
+// three the organizer actually needs.
+const ORGANIZER_APPLICATION_COLUMNS = `
+  a.application_id    AS applicationId,
+  a.event_id          AS eventId,
+  a.status,
+  a.motivation,
+  a.applied_at        AS appliedAt,
+  a.decided_at        AS decidedAt,
+  u.user_id           AS volunteerId,
+  u.full_name         AS fullName,
+  u.email,
+  vp.reputation_score AS reputationScore,
+  r.role_id           AS preferredRoleId,
+  r.title             AS preferredRoleTitle
+`;
+
+const ORGANIZER_APPLICATION_JOINS = `
+  FROM applications a
+  JOIN users u                ON u.user_id      = a.volunteer_id
+  LEFT JOIN volunteer_profiles vp ON vp.volunteer_id = a.volunteer_id
+  LEFT JOIN event_roles r     ON r.role_id      = a.preferred_role_id
+`;
+
+// Flattens the two preferred-role columns into the nullable nested
+// object the API returns, and normalises reputation_score: mysql2 hands
+// back DECIMAL as a string, which would render as "0.00" and sort like
+// text on the client.
+//
+// volunteer_profiles is LEFT JOINed rather than INNER: a volunteer
+// missing their profile row is a data problem, but it shouldn't make
+// their application vanish from the organizer's review queue.
+function toOrganizerApplicationResponse(row) {
+  if (!row) return null;
+
+  const { preferredRoleId, preferredRoleTitle, ...application } = row;
+
+  return {
+    ...application,
+    reputationScore:
+      row.reputationScore === null || row.reputationScore === undefined
+        ? null
+        : Number(row.reputationScore),
+    preferredRole: preferredRoleId
+      ? { roleId: preferredRoleId, title: preferredRoleTitle }
+      : null,
+  };
+}
+
+// GET /events/:eventId/applications
+//
+// Withdrawn applications are filtered out in SQL, not on the client: the
+// volunteer pulled out, so the organizer has no decision left to make
+// and the record shouldn't travel over the wire at all.
+//
+// Oldest first — a review queue should be answered in the order people
+// applied, not newest-first like the volunteer's own list.
+async function findApplicationsForEvent(eventId) {
+  const [rows] = await pool.query(
+    `SELECT ${ORGANIZER_APPLICATION_COLUMNS}
+     ${ORGANIZER_APPLICATION_JOINS}
+      WHERE a.event_id = ?
+        AND a.status <> 'withdrawn'
+      ORDER BY a.applied_at ASC`,
+    [eventId]
+  );
+  return rows.map(toOrganizerApplicationResponse);
+}
+
+// Same shape as the list, for one application. Carries eventId, which is
+// what the controller runs its ownership check against — an application
+// is owned transitively, through its event's organization.
+//
+// Unlike findById() above, this one is unfiltered by status: PATCH may
+// legitimately land on any row, and hiding withdrawn ones here would
+// turn a real record into a confusing 404.
+async function findEnrichedApplicationById(applicationId) {
+  const [[row]] = await pool.query(
+    `SELECT ${ORGANIZER_APPLICATION_COLUMNS}
+     ${ORGANIZER_APPLICATION_JOINS}
+      WHERE a.application_id = ?`,
+    [applicationId]
+  );
+  return toOrganizerApplicationResponse(row);
+}
+
+// PATCH /applications/:applicationId
+//
+// No status guard in the WHERE clause, unlike withdrawApplication above:
+// an organizer may move an application between their four statuses in
+// any direction, including undoing a decision.
+//
+// decided_at tracks when a decision was made, so moving back to
+// 'applied' clears it — there is no longer a decision to have a date.
+async function setApplicationStatus(applicationId, status, conn = pool) {
+  const [result] = await conn.query(
+    `UPDATE applications
+        SET status = ?,
+            decided_at = CASE WHEN ? = 'applied' THEN NULL ELSE CURRENT_TIMESTAMP END
+      WHERE application_id = ?`,
+    [status, status, applicationId]
+  );
+  return result.affectedRows;
+}
+
 module.exports = {
+  // volunteer track
   WITHDRAWABLE_STATUSES,
   findByVolunteerAndEvent,
   createApplication,
   findById,
   findApplicationsByVolunteerId,
   withdrawApplication,
+
+  // organizer track
+  ORGANIZER_SETTABLE_STATUSES,
+  findApplicationsForEvent,
+  findEnrichedApplicationById,
+  setApplicationStatus,
 };

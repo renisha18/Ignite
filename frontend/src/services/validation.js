@@ -94,3 +94,33 @@ export function validateEventForm({
 
   return errors;
 }
+
+// A single event_role row: the category of work and how many volunteers
+// it needs. Mirrors backend/controllers/roleController.js — note the
+// 150-character title limit, which is event_roles.title's VARCHAR(150),
+// narrower than an event's own 255.
+const MAX_ROLE_TITLE = 150;
+
+export function validateRoleForm({ title, capacity }) {
+  const errors = {};
+
+  if (!title || !title.trim()) {
+    errors.title = "Role title is required";
+  } else if (title.trim().length > MAX_ROLE_TITLE) {
+    errors.title = `Must be ${MAX_ROLE_TITLE} characters or fewer`;
+  }
+
+  // Number inputs hand back strings, and "" / "3.5" / "0" all have to
+  // fail here rather than at the API. Number("") is 0, so the blank
+  // check has to come first.
+  if (capacity === "" || capacity === null || capacity === undefined) {
+    errors.capacity = "Number of volunteers is required";
+  } else {
+    const parsed = Number(capacity);
+    if (!Number.isInteger(parsed) || parsed < 1) {
+      errors.capacity = "Must be a whole number, 1 or more";
+    }
+  }
+
+  return errors;
+}
