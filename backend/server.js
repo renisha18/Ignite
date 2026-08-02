@@ -205,6 +205,15 @@ app.use(
 
 
 // ===============================
+// Organizer Dashboard
+// ===============================
+
+// GET /organizer/dashboard — one read-only summary for the landing
+// page. /organizer is a prefix nothing else uses.
+app.use("/organizer", require("./routes/dashboardRoutes"));
+
+
+// ===============================
 // Error Handler
 // MUST be last middleware
 // ===============================
