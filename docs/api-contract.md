@@ -204,6 +204,15 @@ silent no-op. `location` is `VARCHAR(255)` — longer is a `400`.
 | Method | Route | Auth | Body | Returns |
 |---|---|---|---|---|
 | GET | `/skills` | public | — | `{ skills: [{ skillId, name }] }` — every row in `skills` |
+| POST | `/skills` | any signed-in user | `{ name }` | `{ skill: { skillId, name }, created }` — `201` when new, `200` when it already existed |
+
+`POST /skills` is **idempotent by name**, not a create-or-conflict.
+`skills.name` is `utf8mb4_0900_ai_ci`, so matching is case- and
+accent-insensitive: posting `photography` when `Photography` exists
+returns the existing row with `created: false` rather than erroring or
+making a second one. Internal whitespace is collapsed too, so
+`First  Aid` and `First Aid` are the same skill. Treat `created: false`
+as success and select the returned skill.
 
 Built by the volunteer track for the profile skill picker, but intended
 for the organizer track too: `POST /events/:eventId/roles` takes

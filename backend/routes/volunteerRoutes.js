@@ -53,4 +53,12 @@ router.get(
   asyncHandler(certificateController.getMyCertificates)
 );
 
+// "My Journey" — the volunteer's whole history in one live join.
+router.get(
+  "/me/journey",
+  authenticate,
+  authorize("volunteer"),
+  asyncHandler(volunteerController.getMyJourney)
+);
+
 module.exports = router;

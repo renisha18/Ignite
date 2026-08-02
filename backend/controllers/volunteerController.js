@@ -11,6 +11,7 @@
 const volunteerProfileModel = require("../models/volunteerProfileModel");
 const skillModel = require("../models/skillModel");
 const applicationModel = require("../models/applicationModel");
+const assignmentModel = require("../models/assignmentModel");
 const eventModel = require("../models/eventModel");
 const AppError = require("../utils/AppError");
 
@@ -73,6 +74,40 @@ function parseSkillIds(value) {
 async function listSkills(req, res) {
   const skills = await skillModel.listAll();
   res.json({ skills });
+}
+
+// POST /skills — add a skill that isn't in the list yet.
+// body: { name }
+// returns: { skill: { skillId, name }, created }
+//
+// Idempotent by name: asking for a skill that already exists returns it
+// with created:false rather than 409. The caller's intent is "I want to
+// be able to select this", and it already can — an error would just
+// make the UI handle a non-problem.
+//
+// Authenticated but not role-restricted: the volunteer's profile picker
+// needs it, and so will the organizer's event-role form.
+async function createSkill(req, res) {
+  const name = optionalText(req.body?.name, "name", 100); // skills.name is VARCHAR(100)
+
+  if (name === undefined || name === null) {
+    throw new AppError(400, "A skill name is required");
+  }
+
+  // Collapse internal whitespace so "First  Aid" and "First Aid" don't
+  // become two rows — the DB's case-insensitive collation handles case,
+  // but not spacing.
+  const normalised = name.replace(/\s+/g, " ");
+
+  const existing = await skillModel.findByNameInsensitive(normalised);
+  if (existing) {
+    return res.json({ skill: existing, created: false });
+  }
+
+  const skill = await skillModel.createSkill(normalised);
+  return res
+    .status(skill.created ? 201 : 200)
+    .json({ skill: { skillId: skill.skillId, name: skill.name }, created: skill.created });
 }
 
 // GET /volunteers/me/profile
@@ -267,11 +302,27 @@ async function withdrawMyApplication(req, res) {
   res.json({ application: await applicationModel.findById(applicationId) });
 }
 
+// ---------------------------------------------------------------------
+// My Journey
+// ---------------------------------------------------------------------
+
+// GET /volunteers/me/journey
+// returns: { journey: [...] }
+//
+// Thin by design — the whole timeline is one live join, so there's
+// nothing to assemble here. Newest event first, per the contract.
+async function getMyJourney(req, res) {
+  const journey = await assignmentModel.findJourneyForVolunteer(req.user.userId);
+  res.json({ journey });
+}
+
 module.exports = {
   listSkills,
+  createSkill,
   getMyProfile,
   updateMyProfile,
   applyToEvent,
   getMyApplications,
   withdrawMyApplication,
+  getMyJourney,
 };
