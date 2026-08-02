@@ -29,7 +29,7 @@ app.use("/admin", require("./routes/adminRoutes"));
 // Volunteer routes
 app.use("/volunteers", require("./routes/volunteerRoutes"));
 
-<<<<<<< HEAD
+
 // Reference data
 app.use("/skills", require("./routes/skillRoutes"));
 
@@ -92,7 +92,6 @@ app.use(
 
 // Role routes
 app.use("/roles", require("./routes/roleRoutes").rolesRouter);
-=======
 
 // Reference data
 app.use("/skills", require("./routes/skillRoutes"));
@@ -198,7 +197,7 @@ app.use(
 // Error Handler
 // MUST be last middleware
 // ===============================
->>>>>>> feature/organizer
+
 
 const errorHandler = require("./middleware/errorHandler");
 
@@ -210,10 +209,6 @@ app.use(errorHandler);
 // ===============================
 
 const PORT = process.env.PORT || 4000;
-<<<<<<< HEAD
-=======
-
->>>>>>> feature/organizer
 app.listen(PORT, () =>
   console.log(`Ignite API running on http://localhost:${PORT}`)
 );
