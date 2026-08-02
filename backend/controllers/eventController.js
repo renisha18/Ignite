@@ -120,6 +120,21 @@ function buildEventFields(body = {}, { partial = false, existing = null } = {}) 
   if (body.location !== undefined) {
     fields.location = readText(body.location, "location", MAX_LOCATION) || null;
   }
+  if (body.eventType !== undefined) {
+    // "" is how the form's placeholder option comes back — that's "no
+    // type", stored as NULL, not a validation failure. The column is
+    // nullable precisely so events can exist without one.
+    if (body.eventType === null || body.eventType === "") {
+      fields.eventType = null;
+    } else if (!eventModel.EVENT_TYPES.includes(body.eventType)) {
+      throw new AppError(
+        400,
+        `eventType must be one of: ${eventModel.EVENT_TYPES.join(", ")}`
+      );
+    } else {
+      fields.eventType = body.eventType;
+    }
+  }
   if (body.eventEnd !== undefined) {
     fields.eventEnd =
       body.eventEnd === null || body.eventEnd === ""

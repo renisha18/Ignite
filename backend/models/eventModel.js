@@ -27,6 +27,24 @@ const pool = require("../config/db");
 // column definition instead of keeping a second copy of the list.
 const EVENT_STATUSES = ["published", "closed", "completed", "cancelled"];
 
+// The events.event_type ENUM. Exported so the controller validates
+// against the real column definition instead of keeping a second copy,
+// and so sponsor recommendations (which group on exact type equality)
+// can trust the value. Nullable in the schema: events created before
+// the column existed have no type and must keep working.
+const EVENT_TYPES = [
+  "Beach Cleanup",
+  "Blood Donation",
+  "Tree Plantation",
+  "Medical Camp",
+  "Food Drive",
+  "Education",
+  "Animal Welfare",
+  "Marathon",
+  "Hackathon",
+  "Others",
+];
+
 // Why a whitelist map instead of building SET from Object.keys(fields):
 // update() takes a caller-supplied object, and interpolating its keys
 // into the SQL string would be an injection hole no amount of
@@ -39,6 +57,7 @@ const UPDATABLE_COLUMNS = {
   title: "title",
   description: "description",
   location: "location",
+  eventType: "event_type",
   eventStart: "event_start",
   eventEnd: "event_end",
   applicationDeadline: "application_deadline",
@@ -57,6 +76,7 @@ async function create(
     title,
     description,
     location,
+    eventType,
     eventStart,
     eventEnd,
     applicationDeadline,
@@ -65,15 +85,16 @@ async function create(
 ) {
   const [result] = await conn.query(
     `INSERT INTO events
-       (org_id, created_by, title, description, location,
+       (org_id, created_by, title, description, location, event_type,
         event_start, event_end, application_deadline)
-     VALUES (?, ?, ?, ?, ?, ?, ?, ?)`,
+     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)`,
     [
       orgId,
       createdBy,
       title,
       description ?? null,
       location ?? null,
+      eventType ?? null,
       eventStart,
       eventEnd ?? null,
       applicationDeadline ?? null,
@@ -155,6 +176,7 @@ function toEventResponse(row) {
     title: row.title,
     description: row.description,
     location: row.location,
+    eventType: row.event_type ?? null,
     eventStart: row.event_start,
     eventEnd: row.event_end,
     applicationDeadline: row.application_deadline,
@@ -484,6 +506,7 @@ async function listFilterSkills() {
 module.exports = {
   // shared
   EVENT_STATUSES,
+  EVENT_TYPES,
   // Shared read: the volunteer list/detail and the organizer's
   // /events/mine all render roles from this one query.
   rolesSummaryFor,

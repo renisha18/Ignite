@@ -30,9 +30,15 @@ export default function MyEvents() {
   const [loading, setLoading] = useState(true);
   const [loadError, setLoadError] = useState("");
 
-  // null means "create"; an event object means "edit that one".
+  // null means "create"; an id means "edit that one".
+  //
+  // Tracked by id, not by object, for the same reason the roles dialog
+  // is: the edit modal's Roles and Sponsors tabs mutate the event, and a
+  // snapshot taken when the dialog opened would keep rendering the role
+  // list as it was before the change it just made.
   const [formOpen, setFormOpen] = useState(false);
-  const [editingEvent, setEditingEvent] = useState(null);
+  const [editingEventId, setEditingEventId] = useState(null);
+  const editingEvent = events.find((e) => e.eventId === editingEventId) ?? null;
 
   // Tracked by id, not by object: the roles dialog stays open across
   // refetches, and holding a snapshot would leave it rendering the role
@@ -66,12 +72,12 @@ export default function MyEvents() {
   }, [load]);
 
   function openCreate() {
-    setEditingEvent(null);
+    setEditingEventId(null);
     setFormOpen(true);
   }
 
   function openEdit(event) {
-    setEditingEvent(event);
+    setEditingEventId(event.eventId);
     setFormOpen(true);
   }
 
@@ -81,7 +87,7 @@ export default function MyEvents() {
   // client-side copy of the server's ordering rules.
   async function handleSaved(saved, { created } = {}) {
     setFormOpen(false);
-    setEditingEvent(null);
+    setEditingEventId(null);
     await load();
 
     // A new event has no roles, and an event with no roles gives
@@ -176,6 +182,10 @@ export default function MyEvents() {
         event={editingEvent}
         onClose={() => setFormOpen(false)}
         onSaved={handleSaved}
+        // The Roles tab edits roles in place; refetching is what keeps
+        // the derived `editingEvent` above (and the card behind the
+        // dialog) showing the new capacity.
+        onRolesChanged={load}
       />
 
       <EventRolesModal

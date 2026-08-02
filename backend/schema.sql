@@ -57,6 +57,15 @@ CREATE TABLE events (
     title VARCHAR(255) NOT NULL,
     description TEXT,
     location VARCHAR(255),
+    -- Nullable: events predating this column have no type, and untyped
+    -- events must keep working. Only sponsor recommendations depend on
+    -- it. ENUM rather than free text so the recommendation query can
+    -- group on exact equality. Mirrored in
+    -- migrations/001_add_event_type_and_sponsors.sql — keep in step.
+    event_type ENUM(
+        'Beach Cleanup','Blood Donation','Tree Plantation','Medical Camp',
+        'Food Drive','Education','Animal Welfare','Marathon','Hackathon','Others'
+    ) NULL,
     event_start DATETIME NOT NULL,
     event_end DATETIME,
     application_deadline DATETIME,
@@ -177,4 +186,43 @@ CREATE TABLE notifications (
     is_read BOOLEAN DEFAULT FALSE,
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     FOREIGN KEY (user_id) REFERENCES users(user_id) ON DELETE CASCADE
+);
+
+-- Sponsor Recommendation System.
+-- Mirrored in migrations/001_add_event_type_and_sponsors.sql, which is
+-- what an EXISTING database needs — this file only builds fresh ones.
+
+-- The shared catalogue: one row per real-world organisation, reused by
+-- every event they back. Sponsor details live here and nowhere else;
+-- events never copy them.
+CREATE TABLE sponsors (
+    sponsor_id BIGINT AUTO_INCREMENT PRIMARY KEY,
+    sponsor_name VARCHAR(255) NOT NULL,
+    website VARCHAR(255),
+    industry VARCHAR(150),
+    contact_person VARCHAR(150),
+    email VARCHAR(255),
+    phone VARCHAR(50),
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+);
+
+-- The join, plus what the sponsor gave to THIS event —
+-- sponsorship_type/amount/remarks describe the relationship, not the
+-- sponsor, since the same company may give equipment to one event and
+-- cash to another.
+--
+-- event_id CASCADEs; sponsor_id deliberately does not, so a sponsor
+-- appearing in any event's history can't be deleted out from under it.
+-- Unlinking removes a row here and leaves the catalogue untouched.
+CREATE TABLE event_sponsors (
+    event_sponsor_id BIGINT AUTO_INCREMENT PRIMARY KEY,
+    event_id BIGINT NOT NULL,
+    sponsor_id BIGINT NOT NULL,
+    sponsorship_type VARCHAR(100) NOT NULL,
+    sponsorship_amount DECIMAL(12,2) NULL,
+    remarks TEXT,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    UNIQUE (event_id, sponsor_id),
+    FOREIGN KEY (event_id) REFERENCES events(event_id) ON DELETE CASCADE,
+    FOREIGN KEY (sponsor_id) REFERENCES sponsors(sponsor_id)
 );

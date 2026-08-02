@@ -80,6 +80,9 @@ app.use(
   "/events",
   require("./routes/assignmentRoutes").eventCandidatesRouter
 );
+// Sponsor Recommendation System: GET/POST /events/:id/sponsors and
+// GET /events/:id/sponsor-recommendations.
+app.use("/events", require("./routes/sponsorRoutes").eventSponsorsRouter);
 
 // Public event routes
 app.use("/events", require("./routes/publicEventRoutes"));
@@ -92,6 +95,14 @@ app.use(
 
 // Role routes
 app.use("/roles", require("./routes/roleRoutes").rolesRouter);
+
+// Sponsor catalogue (shared reference data) and single event↔sponsor
+// links — the other two thirds of routes/sponsorRoutes.js.
+app.use("/sponsors", require("./routes/sponsorRoutes").sponsorsRouter);
+app.use(
+  "/event-sponsors",
+  require("./routes/sponsorRoutes").eventSponsorLinksRouter
+);
 
 // Reference data
 app.use("/skills", require("./routes/skillRoutes"));

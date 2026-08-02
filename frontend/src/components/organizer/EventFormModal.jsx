@@ -7,18 +7,37 @@
 // stays on screen behind it, there's no route state to keep in sync,
 // and it's less to build — the spec's "avoid unnecessary complexity".
 //
+// TABS. In EDIT mode the modal shows General / Roles / Sponsors. In
+// CREATE mode it shows General only, because Roles and Sponsors both
+// need an eventId that doesn't exist until the event is saved — the
+// existing create → roles-modal sequence in MyEvents is unchanged.
+//
+// Roles and Sponsors render components that own their own state and
+// requests; this file stays responsible for the event's own fields.
+//
 // Depends on: components/ui/Modal.jsx, components/ui/Button.jsx,
 // components/FormInput.jsx, components/Alert.jsx,
+// components/organizer/EventRolesEditor.jsx,
+// components/organizer/EventSponsorsTab.jsx,
 // services/eventService.js, services/validation.js,
-// services/errorMessage.js
+// services/errorMessage.js, services/eventTypes.js
 import { useEffect, useState } from "react";
 import Modal from "../ui/Modal";
 import Button from "../ui/Button";
 import FormInput from "../FormInput";
 import Alert from "../Alert";
+import EventRolesEditor from "./EventRolesEditor";
+import EventSponsorsTab from "./EventSponsorsTab";
 import { createEvent, updateEvent } from "../../services/eventService";
 import { validateEventForm } from "../../services/validation";
 import { getErrorMessage } from "../../services/errorMessage";
+import { EVENT_TYPES } from "../../services/eventTypes";
+
+const TABS = [
+  { key: "general", label: "General" },
+  { key: "roles", label: "Roles" },
+  { key: "sponsors", label: "Sponsors" },
+];
 
 // The <form> lives in the modal body but its submit button lives in the
 // modal footer, outside the form element. HTML's form="" attribute is
@@ -29,6 +48,7 @@ const EMPTY_FORM = {
   title: "",
   description: "",
   location: "",
+  eventType: "",
   eventStart: "",
   eventEnd: "",
   applicationDeadline: "",
@@ -57,15 +77,25 @@ function formFromEvent(event) {
     title: event.title ?? "",
     description: event.description ?? "",
     location: event.location ?? "",
+    // "" is the placeholder option — events predating the column, and
+    // events deliberately left untyped, both land here.
+    eventType: event.eventType ?? "",
     eventStart: toDateTimeLocalValue(event.eventStart),
     eventEnd: toDateTimeLocalValue(event.eventEnd),
     applicationDeadline: toDateTimeLocalValue(event.applicationDeadline),
   };
 }
 
-export default function EventFormModal({ open, event, onClose, onSaved }) {
+export default function EventFormModal({
+  open,
+  event,
+  onClose,
+  onSaved,
+  onRolesChanged,
+}) {
   const isEdit = Boolean(event);
 
+  const [tab, setTab] = useState("general");
   const [form, setForm] = useState(EMPTY_FORM);
   const [fieldErrors, setFieldErrors] = useState({});
   const [serverError, setServerError] = useState("");
@@ -74,12 +104,20 @@ export default function EventFormModal({ open, event, onClose, onSaved }) {
   // Reset whenever the dialog opens, or opens onto a different event —
   // otherwise the previous event's values would still be sitting in
   // state the next time it's opened.
+  //
+  // Keyed on event?.eventId rather than the `event` object: MyEvents now
+  // derives that object from its events array, so it gets a new identity
+  // on every refetch. Depending on identity would wipe whatever the
+  // organizer had typed on the General tab the moment a role or sponsor
+  // change triggered a reload.
   useEffect(() => {
     if (!open) return;
     setForm(formFromEvent(event));
     setFieldErrors({});
     setServerError("");
-  }, [open, event]);
+    setTab("general");
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [open, event?.eventId]);
 
   function handleChange(e) {
     const { name, value } = e.target;
@@ -139,21 +177,65 @@ export default function EventFormModal({ open, event, onClose, onSaved }) {
           : "Your event is published as soon as it's created."
       }
       footer={
-        <>
-          <Button variant="ghost" onClick={onClose} disabled={saving}>
-            Cancel
+        // Only the General tab has anything to submit. Roles and
+        // Sponsors save each change as it's made, so their footer is
+        // just a way out of the dialog.
+        tab === "general" ? (
+          <>
+            <Button variant="ghost" onClick={onClose} disabled={saving}>
+              Cancel
+            </Button>
+            <Button type="submit" form={FORM_ID} loading={saving}>
+              {isEdit ? "Save changes" : "Create event"}
+            </Button>
+          </>
+        ) : (
+          <Button variant="secondary" onClick={onClose}>
+            Done
           </Button>
-          <Button type="submit" form={FORM_ID} loading={saving}>
-            {isEdit ? "Save changes" : "Create event"}
-          </Button>
-        </>
+        )
       }
     >
+      {/* Tabs only in edit mode: Roles and Sponsors both need an
+          eventId, which doesn't exist until the event is saved. */}
+      {isEdit && (
+        <div
+          role="tablist"
+          aria-label="Event sections"
+          className="mb-5 flex gap-2 border-b-2 border-ink pb-3"
+        >
+          {TABS.map((item) => (
+            <button
+              key={item.key}
+              type="button"
+              role="tab"
+              aria-selected={tab === item.key}
+              onClick={() => setTab(item.key)}
+              className={`rounded-lg border-2 border-ink px-3 py-1.5 text-xs font-bold uppercase tracking-wide transition-all duration-100 ${
+                tab === item.key
+                  ? "bg-gold text-ink shadow-brutal-sm"
+                  : "bg-cream text-ink/70 hover:bg-gold-light/40 hover:text-ink"
+              }`}
+            >
+              {item.label}
+            </button>
+          ))}
+        </div>
+      )}
+
+      {tab === "roles" && isEdit && (
+        <EventRolesEditor event={event} onChanged={onRolesChanged} />
+      )}
+
+      {tab === "sponsors" && isEdit && <EventSponsorsTab event={event} />}
+
       <form
         id={FORM_ID}
         onSubmit={handleSubmit}
         noValidate
-        className="flex flex-col gap-4"
+        // Kept mounted but hidden on other tabs, so switching away and
+        // back doesn't discard half-typed edits.
+        className={`flex-col gap-4 ${tab === "general" ? "flex" : "hidden"}`}
       >
         <Alert variant="error">{serverError}</Alert>
 
@@ -185,6 +267,37 @@ export default function EventFormModal({ open, event, onClose, onSaved }) {
           error={fieldErrors.location}
           placeholder="Marina Beach, Chennai"
         />
+
+        {/* The only new field on this tab. A fixed list rather than free
+            text: sponsor recommendations group on exact type equality,
+            so "Beach cleanup" and "beach-cleanup" would split one
+            category in two. Blank is valid and stored as NULL — events
+            predating the column keep working untyped. */}
+        <div className="flex flex-col gap-1">
+          <label
+            htmlFor="eventType"
+            className="text-xs font-bold uppercase tracking-wide text-ink"
+          >
+            Event type (optional)
+          </label>
+          <select
+            id="eventType"
+            name="eventType"
+            value={form.eventType}
+            onChange={handleChange}
+            className="rounded-lg border-2 border-ink bg-cream px-3 py-2 text-sm text-ink shadow-brutal-sm outline-none transition-all duration-100 focus:-translate-x-0.5 focus:-translate-y-0.5 focus:shadow-brutal"
+          >
+            <option value="">Not specified</option>
+            {EVENT_TYPES.map((type) => (
+              <option key={type} value={type}>
+                {type}
+              </option>
+            ))}
+          </select>
+          <span className="text-xs text-muted">
+            Used to suggest sponsors from similar past events.
+          </span>
+        </div>
 
         <div className="grid gap-4 sm:grid-cols-2">
           <FormInput
