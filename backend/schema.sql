@@ -77,6 +77,7 @@ CREATE TABLE event_roles (
 CREATE TABLE role_skills (
     role_id BIGINT NOT NULL,
     skill_id INT NOT NULL,
+    
     PRIMARY KEY (role_id, skill_id),
     FOREIGN KEY (role_id) REFERENCES event_roles(role_id) ON DELETE CASCADE,
     FOREIGN KEY (skill_id) REFERENCES skills(skill_id) ON DELETE CASCADE

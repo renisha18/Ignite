@@ -1,35 +1,31 @@
-// QR attendance, volunteer side — docs/api-contract.md, "How the QR
-// works".
+// QR attendance — docs/api-contract.md, "How the QR works".
 //
-// One endpoint, one scan. There is deliberately no check-out and no
-// location call: the volunteer is identified by their own JWT (attached
-// automatically by api.js) and the event by the QR token, so the client
-// never sends an assignmentId. Don't add one.
+// One scan per volunteer per event. There is deliberately no check-out
+// and no location call: the volunteer is identified by their own JWT
+// (attached automatically by api.js) and the event by the QR token, so
+// the client never sends an assignmentId. Don't add one.
 //
-// Expected failures worth handling at the call site:
-//   401/expired token -> QR on the organizer's screen went stale, rescan
-//   403               -> volunteer has no active assignment for that event
-//   409               -> already scanned (attendance.assignment_id is UNIQUE)
-//
-// STUB: signature and route are final, body is not written yet.
-// See the note in eventService.js.
-//
-/* eslint-disable no-unused-vars -- Stub file; see eventService.js. */
+// Depends on: services/api.js
 import api from "./api";
 
 // POST /attendance/scan
 // body: { qrToken }
-// returns: { attendance }
+// returns: { attendanceId, assignmentId, checkInTime, verificationStatus,
+//            eventId, eventTitle, roleTitle }
+//
+// Failures are distinct on purpose — surface the server's message rather
+// than a generic one, because the right next action differs:
+//   400 expired -> the organizer's screen has refreshed, scan it again
+//   400 invalid -> that wasn't an Ignite attendance code at all
+//   403         -> being selected isn't enough; you need an assigned role
+//   409         -> already checked in
 export async function scanQr(qrToken) {
-  // return (await api.post("/attendance/scan", { qrToken })).data.attendance;
-  throw new Error("Not implemented: attendanceService.scanQr");
+  const { data } = await api.post("/attendance/scan", { qrToken });
+  return data.attendance;
 }
 
 // ---------------------------------------------------------------------
 // Organizer track — display the QR, view who scanned
-//
-// Mirrors the "Attendance (organizer displays the QR, views who
-// scanned)" table in docs/api-contract.md. Both stubs.
 //
 // NOTE: there is deliberately no setEventLocation() here. The contract's
 // earlier POST /events/:eventId/location was removed when attendance
@@ -38,23 +34,25 @@ export async function scanQr(qrToken) {
 // ---------------------------------------------------------------------
 
 // GET /events/:eventId/attendance-qr
-// returns: { qrToken, expiresIn }
+// returns: { qrToken, expiresIn }  (expiresIn in SECONDS)
 //
 // The token IS the state — nothing is persisted until a volunteer
 // actually scans. It expires in ~5 minutes, so the screen displaying it
-// must refetch on expiry; that's what stops a screenshot of the QR from
+// must refetch before then; that's what stops a photograph of the QR
 // working for the rest of the day. Render qrToken as a QR image.
 export async function getAttendanceQr(eventId) {
-  // return (await api.get(`/events/${eventId}/attendance-qr`)).data;
-  throw new Error("Not implemented: attendanceService.getAttendanceQr");
+  const { data } = await api.get(`/events/${eventId}/attendance-qr`);
+  return data;
 }
 
 // GET /events/:eventId/attendance
-// returns: [{ volunteerId, name, roleTitle, checkInTime, verificationStatus }]
+// returns: { attendance: [{ volunteerId, name, roleTitle, checkInTime,
+//                           verificationStatus }],
+//            checkedInCount, assignedCount }
 //
 // checkOutTime is intentionally absent — there is no check-out in this
 // system; hours come from the event's own start/end at certificate time.
 export async function getEventAttendance(eventId) {
-  // return (await api.get(`/events/${eventId}/attendance`)).data.attendance;
-  throw new Error("Not implemented: attendanceService.getEventAttendance");
+  const { data } = await api.get(`/events/${eventId}/attendance`);
+  return data;
 }

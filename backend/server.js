@@ -35,6 +35,16 @@ app.use("/skills", require("./routes/skillRoutes"));
 // alongside this one when it lands — different paths, no conflict.
 app.use("/applications", require("./routes/volunteerApplicationRoutes"));
 
+// Organizer issues (POST /certificates), volunteer downloads
+// (GET /certificates/:id/download). The volunteer's own list lives at
+// GET /volunteers/me/certificates, mounted above under /volunteers.
+app.use("/certificates", require("./routes/certificateRoutes"));
+
+// QR attendance. Mounted without a prefix because it spans two — the
+// organizer's routes live under /events/:eventId/... and the volunteer's
+// under /attendance/... — so the router declares full paths itself.
+app.use(require("./routes/attendanceRoutes"));
+
 // Both tracks serve /events, from separate route files so neither has
 // to edit the other's. MOUNT ORDER MATTERS between them: Express tries
 // mounted routers in order, and publicEventRoutes has a GET "/:eventId"

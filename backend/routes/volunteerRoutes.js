@@ -14,6 +14,7 @@
 // Depended on by: server.js (mounted at app.use("/volunteers", ...))
 const express = require("express");
 const volunteerController = require("../controllers/volunteerController");
+const certificateController = require("../controllers/certificateController");
 const authenticate = require("../middleware/authenticate");
 const authorize = require("../middleware/authorize");
 const asyncHandler = require("../middleware/asyncHandler");
@@ -39,6 +40,17 @@ router.get(
   authenticate,
   authorize("volunteer"),
   asyncHandler(volunteerController.getMyApplications)
+);
+
+// Certificate LIST only. It lives here rather than in certificateRoutes
+// because the contract puts it under /volunteers, but the handler is
+// certificateController's — issuing and downloading stay in
+// routes/certificateRoutes.js.
+router.get(
+  "/me/certificates",
+  authenticate,
+  authorize("volunteer"),
+  asyncHandler(certificateController.getMyCertificates)
 );
 
 module.exports = router;
