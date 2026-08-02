@@ -16,3 +16,19 @@ export async function getSkills() {
   const { data } = await api.get("/skills");
   return data.skills;
 }
+
+// POST /skills
+// body: { name }
+// returns: { skill: { skillId, name }, created }
+//
+// Idempotent by name, and matching is case-insensitive server-side
+// (skills.name is a *_ci collation), so asking for "photography" when
+// "Photography" exists returns the existing row with created:false
+// rather than erroring or making a second one. Callers should treat
+// created:false as success and just select the returned skill.
+//
+// Authenticated — anyone signed in can extend the shared list.
+export async function createSkill(name) {
+  const { data } = await api.post("/skills", { name });
+  return data;
+}

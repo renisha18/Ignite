@@ -270,6 +270,78 @@ async function findSkillsForRole(roleId) {
   return rows;
 }
 
+// ---------------------------------------------------------------------
+// Volunteer track — "My Journey"
+//
+// Appended, nothing above modified. Every function above is event-scoped
+// (the organizer's Team Builder board); this is the one volunteer-scoped
+// read, so it lives here rather than duplicating the assignments join
+// somewhere else.
+// ---------------------------------------------------------------------
+
+// GET /volunteers/me/journey
+//
+// One live query — no new table, nothing cached, nothing denormalised.
+// The volunteer's whole history is derivable from rows that already
+// exist, and a cached copy would only be another thing to invalidate
+// when an organizer issues a certificate.
+//
+// LEFT JOIN on attendance and certificates on purpose: an assignment
+// that hasn't been attended yet, or attended but not yet certified, is
+// still part of the journey. An INNER JOIN would silently hide the
+// upcoming events, which are the entries the volunteer most wants to see.
+//
+// Cancelled assignments are excluded — the journey is what you did, not
+// what was unassigned. Note the schema's UNIQUE (volunteer_id, event_id)
+// means one row per event either way.
+//
+// `recognitions` is deliberately not joined: the table exists in
+// schema.sql but nothing in the backend writes to it, so joining it
+// would only add nulls to every row.
+async function findJourneyForVolunteer(volunteerId) {
+  const [rows] = await pool.query(
+    `SELECT a.assignment_id        AS assignmentId,
+            a.assigned_at          AS assignedAt,
+            a.rating,
+            e.event_id             AS eventId,
+            e.title                AS eventTitle,
+            e.description          AS eventDescription,
+            e.location             AS eventLocation,
+            e.event_start          AS eventStart,
+            e.event_end            AS eventEnd,
+            e.status               AS eventStatus,
+            o.org_id               AS orgId,
+            o.name                 AS orgName,
+            r.role_id              AS roleId,
+            r.title                AS roleTitle,
+            att.check_in_time      AS checkInTime,
+            att.verification_status AS verificationStatus,
+            c.certificate_id       AS certificateId,
+            c.certificate_code     AS certificateCode,
+            c.hours_credited       AS hoursCredited,
+            c.issued_at            AS certificateIssuedAt
+       FROM assignments a
+       JOIN events e         ON e.event_id = a.event_id
+       JOIN organizations o  ON o.org_id   = e.org_id
+       JOIN event_roles r    ON r.role_id  = a.role_id
+       LEFT JOIN attendance att  ON att.assignment_id = a.assignment_id
+       LEFT JOIN certificates c  ON c.assignment_id   = a.assignment_id
+      WHERE a.volunteer_id = ?
+        AND a.status = 'assigned'
+      ORDER BY e.event_start DESC`,
+    [volunteerId]
+  );
+
+  return rows.map((row) => ({
+    ...row,
+    // DECIMAL comes back as a string from mysql2; null stays null so the
+    // UI can tell "no certificate yet" from "zero hours".
+    hoursCredited: row.hoursCredited === null ? null : Number(row.hoursCredited),
+    attended: row.verificationStatus === "verified",
+    certified: row.certificateId !== null,
+  }));
+}
+
 module.exports = {
   // board reads
   findRolesForEvent,
@@ -291,4 +363,7 @@ module.exports = {
   // single-record reads for the POST response
   findVolunteerSummary,
   findSkillsForRole,
+
+  // volunteer track
+  findJourneyForVolunteer,
 };

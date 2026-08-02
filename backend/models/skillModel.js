@@ -45,4 +45,45 @@ async function findExistingIds(skillIds, conn = pool) {
   return rows.map((row) => row.skillId);
 }
 
-module.exports = { listAll, findExistingIds };
+// Case-insensitive lookup by name, for "add a skill that isn't listed".
+//
+// Worth knowing: skills.name is utf8mb4_0900_ai_ci, so plain `=` is
+// ALREADY case- and accent-insensitive — 'photography' matches the row
+// stored as 'Photography'. LOWER() on both sides would be redundant and
+// would also stop MySQL using the UNIQUE index. So this is a plain
+// equality match, and the comment is here so nobody "fixes" it into a
+// LOWER() comparison later.
+//
+// Which also means UNIQUE(name) already blocks a duplicate-by-case at
+// the DB level. This function's job isn't to prevent that duplicate —
+// it's to return the existing row cleanly instead of erroring.
+async function findByNameInsensitive(name, conn = pool) {
+  const [[row]] = await conn.query(
+    "SELECT skill_id AS skillId, name FROM skills WHERE name = ?",
+    [name]
+  );
+  return row || null;
+}
+
+// Insert a new skill, or return the existing one if someone beat us to
+// it. Never creates a second row for the same name.
+//
+// The lookup above is done first by the controller, but two volunteers
+// typing the same new skill at the same moment would both pass that
+// check — so the UNIQUE constraint is the real guard and ER_DUP_ENTRY
+// is a normal outcome here, not an error. Re-selecting on the clash
+// returns the winner's row, which is what both callers wanted anyway.
+async function createSkill(name) {
+  try {
+    const [result] = await pool.query("INSERT INTO skills (name) VALUES (?)", [name]);
+    return { skillId: result.insertId, name, created: true };
+  } catch (err) {
+    if (err.code === "ER_DUP_ENTRY") {
+      const existing = await findByNameInsensitive(name);
+      if (existing) return { ...existing, created: false };
+    }
+    throw err;
+  }
+}
+
+module.exports = { listAll, findExistingIds, findByNameInsensitive, createSkill };

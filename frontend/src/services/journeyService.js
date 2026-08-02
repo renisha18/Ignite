@@ -1,16 +1,30 @@
 // The "My Journey" timeline — docs/api-contract.md, volunteer track.
-// Feeds both the History page and My Team (assigned role + teammates),
-// since there's no separate team endpoint in the contract.
 //
-// STUB: signature and route are final, body is not written yet.
-// See the note in eventService.js.
+// One live join server-side: assignments -> events -> event_roles, left
+// joined to attendance and certificates. Nothing is cached or
+// denormalised, so an entry reflects a certificate the moment the
+// organizer issues it.
 //
-/* eslint-disable no-unused-vars -- Stub file; see eventService.js. */
+// Depends on: services/api.js (attaches the Authorization header)
 import api from "./api";
 
 // GET /volunteers/me/journey
-// returns: { journey: [...] }
+// returns: [{ assignmentId, assignedAt, rating,
+//             eventId, eventTitle, eventDescription, eventLocation,
+//             eventStart, eventEnd, eventStatus,
+//             orgId, orgName, roleId, roleTitle,
+//             checkInTime, verificationStatus,
+//             certificateId, certificateCode, hoursCredited,
+//             certificateIssuedAt,
+//             attended, certified }]
+//
+// Newest event first. `attended` and `certified` are computed
+// server-side so the UI and the API can't disagree about what counts.
+// `hoursCredited` is null until a certificate exists — that's distinct
+// from zero, so don't default it.
+//
+// Cancelled assignments are excluded: the journey is what you did.
 export async function getMyJourney() {
-  // return (await api.get("/volunteers/me/journey")).data.journey;
-  throw new Error("Not implemented: journeyService.getMyJourney");
+  const { data } = await api.get("/volunteers/me/journey");
+  return data.journey;
 }
