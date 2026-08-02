@@ -31,7 +31,6 @@ app.use("/skills", require("./routes/skillRoutes"));
 
 // Volunteer application routes
 app.use("/applications", require("./routes/volunteerApplicationRoutes"));
-
 // Organizer application routes
 app.use(
   "/applications",
@@ -39,12 +38,34 @@ app.use(
 );
 
 // Certificates
+// Organizer issues (POST /certificates), volunteer downloads
+// (GET /certificates/:id/download). The volunteer's own list lives at
+// GET /volunteers/me/certificates, mounted above under /volunteers.
 app.use("/certificates", require("./routes/certificateRoutes"));
 
 // QR Attendance
 app.use(require("./routes/attendanceRoutes"));
 
 // Organizer event routes (must come before public routes)
+// Both tracks serve /events, from separate route files so neither has
+// to edit the other's. MOUNT ORDER MATTERS between them: Express tries
+// mounted routers in order, and publicEventRoutes has a GET "/:eventId"
+// that would swallow the organizer's literal GET "/mine" (returning
+// 400 "eventId must be a positive integer") if it were reached first.
+// So the organizer router, which only has literal + write routes, must
+// be mounted BEFORE the public one.
+//
+// NOTE: routes/eventRoutes.js (organizer: POST /events, PUT/DELETE
+// /events/:eventId, GET /events/mine) exists and is fully implemented
+// but has never been mounted on either branch — those endpoints are
+// currently unreachable. This wasn't part of the merge conflict, so
+// it's left as-is; uncomment the line below to switch them on.
+// Volunteer's PATCH /applications/:id/
+
+// Organizer's PATCH /applications/:applicationId (accept/reject/undo).
+
+// Both tracks serve /events, from separate route files.
+// Organizer routes MUST come before public routes.
 app.use("/events", require("./routes/eventRoutes"));
 app.use("/events", require("./routes/roleRoutes").eventRolesRouter);
 app.use(
@@ -68,7 +89,10 @@ app.use(
 // Role routes
 app.use("/roles", require("./routes/roleRoutes").rolesRouter);
 
-// Error handler
+// Why errorHandler is registered LAST: Express only routes a request
+// into a 4-arg (err, req, res, next) middleware when something calls
+// next(err) — every route above wraps its handler in asyncHandler, so
+// a thrown AppError ends up here instead of crashing the process.
 const errorHandler = require("./middleware/errorHandler");
 app.use(errorHandler);
 
