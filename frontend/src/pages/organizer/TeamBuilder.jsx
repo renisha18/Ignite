@@ -277,7 +277,7 @@ export default function TeamBuilder() {
               <select
                 value={eventId}
                 onChange={(e) => setEventId(e.target.value)}
-                className="max-w-[16rem] rounded-lg border border-gray-300 px-3 py-2 text-sm outline-none transition focus:border-maroon focus:ring-2 focus:ring-maroon-light/30"
+                className="max-w-[16rem] rounded-lg border-2 border-ink bg-cream px-3 py-2 text-sm font-semibold text-ink shadow-brutal-sm outline-none transition-all duration-100 focus:-translate-x-0.5 focus:-translate-y-0.5 focus:shadow-brutal"
               >
                 {events.map((event) => (
                   <option key={event.eventId} value={event.eventId}>

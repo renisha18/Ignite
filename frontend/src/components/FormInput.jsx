@@ -23,15 +23,23 @@ export default function FormInput({
 }) {
   // Hoisted out of the JSX so the input and textarea branches can't
   // drift apart visually.
-  const controlClass = `rounded-lg border px-3 py-2 text-sm outline-none transition focus:ring-2 ${
-    error
-      ? "border-red-400 focus:ring-red-200"
-      : "border-gray-300 focus:border-maroon focus:ring-maroon-light/30"
+  //
+  // Same slab treatment as Card and Button — ink border, hard shadow,
+  // 16px corners — so a form field reads as the same material as
+  // everything around it. Focus lifts the control up and left into a
+  // bigger shadow rather than drawing a glow ring; an outline this heavy
+  // has no room for one. An errored field swaps the border to `error`,
+  // which is the only case where the ink outline gives way.
+  const controlClass = `rounded-lg border-2 bg-cream px-3 py-2 text-sm text-ink outline-none transition-all duration-100 placeholder:text-muted/70 focus:-translate-x-0.5 focus:-translate-y-0.5 focus:shadow-brutal ${
+    error ? "border-error shadow-brutal-sm" : "border-ink shadow-brutal-sm"
   }`;
 
   return (
     <div className="flex flex-col gap-1">
-      <label htmlFor={name} className="text-sm font-medium text-gray-700">
+      <label
+        htmlFor={name}
+        className="text-xs font-bold uppercase tracking-wide text-ink"
+      >
         {label}
       </label>
 
@@ -58,7 +66,7 @@ export default function FormInput({
         />
       )}
 
-      {error && <span className="text-xs text-red-600">{error}</span>}
+      {error && <span className="text-xs font-bold text-error">{error}</span>}
     </div>
   );
 }

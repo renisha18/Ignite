@@ -22,7 +22,7 @@ import OrganizerTopBar from "./OrganizerTopBar";
 
 export default function OrganizerLayout() {
   return (
-    <div className="flex min-h-screen bg-background text-ink">
+    <div className="flex min-h-screen bg-background text-ink antialiased">
       <OrganizerSidebar />
       <div className="flex min-w-0 flex-1 flex-col">
         <OrganizerTopBar />

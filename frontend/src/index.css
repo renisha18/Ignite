@@ -1,25 +1,117 @@
 @import "tailwindcss";
-@config "../../tailwind.config.js";
 
-/* Why colors are defined here (Tailwind v4 CSS-first config) rather
-   than in a tailwind.config.js theme.extend block: v4 generates
-   utility classes straight from CSS custom properties declared in an
-   @theme block. Defining --color-maroon and --color-gold here is what
-   makes bg-maroon, text-gold, border-maroon-dark etc. valid utility
-   classes everywhere in the app —
-    one source of truth for the brand
-   palette, taken from the official Rotaract brand colors. */
+/* ---------------------------------------------------------------------
+   Ignite design system — Neo-Brutalist, Rotaract palette.
+
+   Tailwind v4 is CSS-first: every custom property declared in @theme
+   becomes a utility class. So this block IS the design system — defining
+   --color-ink here is what makes `bg-ink`, `border-ink`, `text-ink/70`
+   valid everywhere.
+
+   That cuts both ways, and it's worth knowing why this file grew: the
+   app was already written against `ink`, `muted`, `primary`,
+   `background` and `success` — 400+ utility usages — but those tokens
+   were never declared. Tailwind silently skips unknown tokens, so those
+   classes emitted no CSS at all and the screens rendered half-styled
+   while the build stayed green. Declaring them below fixes every one of
+   those call sites at once, which is why almost no page file needed
+   touching in this pass.
+
+   Rule going forward: add a token here, don't hardcode a hex in a
+   component.
+   --------------------------------------------------------------------- */
 @theme {
-  --color-maroon: #A6192E;
-  --color-maroon-dark: #7A1322;
-  --color-maroon-light: #C13A4E;
+  /* --- Brand ------------------------------------------------------ */
+  /* Official Rotaract-inspired palette. */
+  --color-maroon: #a6192e;
+  --color-maroon-dark: #7a1322;
+  --color-maroon-light: #c13a4e;
 
-  --color-gold: #C39E4E;
-  --color-gold-light: #DDC08A;
-  --color-gold-dark: #9E7E3B;
+  --color-gold: #c39e4e;
+  --color-gold-light: #ddc08a;
+  --color-gold-dark: #9e7e3b;
+
+  /* --- Neo-Brutalist core ----------------------------------------- */
+  /* Every border and every shadow in the app is this ink. A single
+     near-black is what makes the style read as one system rather than
+     a collection of outlined boxes. */
+  --color-ink: #141414;
+  --color-cream: #fbf7f0;
+
+  /* --- Semantic aliases ------------------------------------------- */
+  /* Named by role, not by hue, so a component says what it means.
+     `primary` and `background` intentionally point at brand values:
+     one concept, two names, no second palette. */
+  --color-primary: #a6192e; /* = maroon */
+  --color-primary-dark: #7a1322; /* = maroon-dark */
+  --color-background: #fbf7f0; /* = cream */
+  --color-surface: #ffffff;
+
+  /* Warm grey rather than a neutral one — a cool grey reads as dirt
+     against cream. 5.5:1 on the cream background, so it clears AA for
+     body text. */
+  --color-muted: #6b6257;
+
+  /* Status colours kept from the previous pass, nudged only for
+     contrast on cream. Deliberately NOT maroon: an error has to be
+     distinguishable from the brand, or every destructive state looks
+     like a logo. */
+  --color-success: #2e7d4f;
+  --color-error: #b3261e;
+
+  /* --- Type -------------------------------------------------------- */
+  /* Heavy system stack, no webfont — nothing external is loaded. The
+     weight comes from font-weight 800+ at the call site; this stack
+     just prefers a genuinely heavy face where the OS has one. */
+  --font-display:
+    "Segoe UI Black", "Arial Black", "Helvetica Neue", ui-sans-serif,
+    system-ui, sans-serif;
+  --font-sans:
+    "Segoe UI", ui-sans-serif, system-ui, -apple-system, sans-serif;
+
+  /* --- Hard shadows ------------------------------------------------ */
+  /* The signature of the style: a solid offset block, never a blur.
+     Offsets are 2/4/6px and each one has a matching press distance
+     (translate-x-0.5 / -1 / -1.5), so a control can be pushed exactly
+     into its own shadow.
+
+     The default scale is overridden too, so the handful of pre-existing
+     `shadow-sm`/`shadow-md`/`shadow-lg` usages became hard shadows
+     without being hunted down individually. */
+  --shadow-brutal-sm: 2px 2px 0 0 var(--color-ink);
+  --shadow-brutal: 4px 4px 0 0 var(--color-ink);
+  --shadow-brutal-lg: 6px 6px 0 0 var(--color-ink);
+
+  --shadow-2xs: 2px 2px 0 0 var(--color-ink);
+  --shadow-xs: 2px 2px 0 0 var(--color-ink);
+  --shadow-sm: 2px 2px 0 0 var(--color-ink);
+  --shadow-md: 4px 4px 0 0 var(--color-ink);
+  --shadow-lg: 6px 6px 0 0 var(--color-ink);
+  --shadow-xl: 8px 8px 0 0 var(--color-ink);
+
+  /* --- Radius ------------------------------------------------------ */
+  /* rounded-lg is the app's default corner (30 existing usages), so
+     redefining it to 16px moved every card, input and modal into the
+     16–20px band in one line instead of 30 edits. */
+  --radius-md: 0.75rem; /* 12px */
+  --radius-lg: 1rem; /* 16px — cards, inputs, modals */
+  --radius-xl: 1.25rem; /* 20px — the largest surfaces */
 }
 
-body {
-  margin: 0;
-  font-family: "Segoe UI", system-ui, -apple-system, sans-serif;
+@layer base {
+  body {
+    margin: 0;
+    background-color: var(--color-background);
+    color: var(--color-ink);
+    font-family: var(--font-sans);
+  }
+
+  /* Unqualified `border` should mean an ink hairline, not Tailwind's
+     default currentColor. Utilities like `border-muted/25` still win —
+     this only sets the fallback. */
+  *,
+  ::before,
+  ::after {
+    border-color: var(--color-ink);
+  }
 }

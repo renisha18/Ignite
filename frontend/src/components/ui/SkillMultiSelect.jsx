@@ -65,14 +65,14 @@ export default function SkillMultiSelect({
 
   return (
     <fieldset disabled={disabled} className="min-w-0">
-      <legend className="mb-1 font-mono text-[10px] uppercase tracking-[0.16em] text-muted">
+      <legend className="mb-1 font-mono text-[10px] font-bold uppercase tracking-[0.16em] text-ink">
         {label}
       </legend>
       {hint && <p className="mb-2.5 text-xs text-muted">{hint}</p>}
 
       {loading && <p className="text-sm text-muted">Loading skills…</p>}
 
-      {error && <p className="text-sm text-primary">{error}</p>}
+      {error && <p className="text-sm font-semibold text-error">{error}</p>}
 
       {!loading && !error && skills.length === 0 && (
         <p className="text-sm text-muted">
@@ -92,17 +92,22 @@ export default function SkillMultiSelect({
                 type="button"
                 onClick={() => toggle(Number(skill.skillId))}
                 aria-pressed={isSelected}
-                className={`relative overflow-hidden rounded-full border py-1 pl-4 pr-3 text-xs font-medium transition disabled:cursor-not-allowed disabled:opacity-60 ${
+                // Same chip anatomy as StatusChip — ink border, hard
+                // shadow, seal notch — so a selectable skill and a
+                // status read as the same family of object. Selection
+                // is a gold fill plus the shadow appearing, and an
+                // unselected chip sits flat against the surface.
+                className={`relative overflow-hidden rounded-full border-2 border-ink py-1 pl-4 pr-3 text-xs font-bold transition-all duration-100 disabled:cursor-not-allowed disabled:opacity-60 ${
                   isSelected
-                    ? "border-gold/60 bg-gold/15 text-gold-dark"
-                    : "border-muted/40 bg-transparent text-ink/70 hover:border-muted hover:text-ink"
+                    ? "bg-gold text-ink shadow-brutal-sm"
+                    : "bg-cream text-ink/70 hover:bg-gold-light/40 hover:text-ink"
                 }`}
               >
-                {/* Gold-seal notch, same treatment as StatusChip. */}
+                {/* Seal notch, same treatment as StatusChip. */}
                 <span
                   aria-hidden="true"
                   className={`absolute -left-1 top-1/2 h-2 w-2 -translate-y-1/2 rotate-45 ${
-                    isSelected ? "bg-gold" : "bg-muted/50"
+                    isSelected ? "bg-ink" : "bg-muted/50"
                   }`}
                 />
                 {skill.name}

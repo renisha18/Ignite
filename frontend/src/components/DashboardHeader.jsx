@@ -14,16 +14,20 @@ export default function DashboardHeader({ title }) {
   }
 
   return (
-    <header className="flex items-center justify-between bg-maroon px-6 py-4">
+    <header className="flex items-center justify-between border-b-2 border-ink bg-primary px-6 py-4">
       <div>
-        <h1 className="text-lg font-semibold text-white">Ignite</h1>
-        <p className="text-xs text-gold-light">{title}</p>
+        <h1 className="font-display text-lg font-extrabold uppercase tracking-tight text-cream">
+          Ignite
+        </h1>
+        <p className="font-mono text-[10px] uppercase tracking-[0.18em] text-gold-light">
+          {title}
+        </p>
       </div>
       <div className="flex items-center gap-4">
-        <span className="text-sm text-white/90">{user?.fullName}</span>
+        <span className="text-sm font-semibold text-cream/90">{user?.fullName}</span>
         <button
           onClick={handleLogout}
-          className="rounded-md bg-white/10 px-3 py-1.5 text-sm font-medium text-white transition hover:bg-white/20"
+          className="rounded-lg border-2 border-ink bg-gold px-3 py-1.5 text-sm font-bold text-ink shadow-brutal-sm transition-all duration-100 hover:bg-gold-light active:translate-x-0.5 active:translate-y-0.5 active:shadow-none"
         >
           Log out
         </button>

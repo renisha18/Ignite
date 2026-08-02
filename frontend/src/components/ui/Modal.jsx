@@ -80,12 +80,10 @@ export default function Modal({
       onMouseDown={(event) => {
         if (event.target === event.currentTarget) onCloseRef.current?.();
       }}
-      // Literal black/white here rather than the bg-ink / bg-background
-      // tokens: those tokens aren't defined in index.css yet, and a scrim
-      // or panel that renders transparent makes the dialog unusable
-      // rather than merely off-palette. Swap both to the tokens once the
-      // theme is fixed.
-      className="fixed inset-0 z-50 flex items-start justify-center overflow-y-auto bg-black/40 p-4 backdrop-blur-sm sm:items-center"
+      // On the theme tokens now: `ink` and `cream` are declared in
+      // index.css, so this no longer needs the literal black/white it
+      // carried while those tokens were missing.
+      className="fixed inset-0 z-50 flex items-start justify-center overflow-y-auto bg-ink/50 p-4 sm:items-center"
     >
       <div
         ref={panelRef}
@@ -93,21 +91,21 @@ export default function Modal({
         role="dialog"
         aria-modal="true"
         aria-label={title}
-        className={`w-full ${SIZES[size] ?? SIZES.md} rounded-lg border border-muted/25 bg-white shadow-lg outline-none`}
+        className={`w-full ${SIZES[size] ?? SIZES.md} rounded-lg border-2 border-ink bg-cream shadow-brutal-lg outline-none`}
       >
-        <header className="border-b border-muted/25 px-5 py-4">
-          <h2 className="font-display text-lg font-semibold tracking-tight text-ink">
+        <header className="border-b-2 border-ink px-5 py-4">
+          <h2 className="font-display text-lg font-extrabold uppercase tracking-tight text-ink">
             {title}
           </h2>
           {description && (
-            <p className="mt-1 text-sm text-muted">{description}</p>
+            <p className="mt-1 text-sm font-medium text-muted">{description}</p>
           )}
         </header>
 
         <div className="px-5 py-4">{children}</div>
 
         {footer && (
-          <footer className="flex items-center justify-end gap-2 border-t border-muted/25 px-5 py-4">
+          <footer className="flex items-center justify-end gap-2 border-t-2 border-ink px-5 py-4">
             {footer}
           </footer>
         )}

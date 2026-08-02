@@ -15,41 +15,32 @@
 //   <StatusChip status={event.status} type="event" />
 //   <StatusChip status={organization.status} type="organization" />
 //
-// Colors come only from the project palette: there is no dedicated
-// error red, so genuinely negative states use the oxblood primary,
-// positive states use sage success, and anything provisional sits on
-// muted.
+// Neo-Brutalist treatment: solid fills rather than washes, one ink
+// border and one hard shadow for every chip. Only the fill carries
+// meaning, which is what keeps eleven statuses from turning into eleven
+// slightly different outline styles. Semantic hues are unchanged from
+// the previous pass — success stays sage, error stays red, provisional
+// states stay gold or neutral.
 
 // applications.status
 const APPLICATION_STATUSES = {
   applied: {
     label: "Applied",
     // Neutral, not a success and not a failure — the volunteer is waiting.
-    className: "border-muted/50 bg-muted/10 text-ink/70",
-    notch: "bg-muted",
+    className: "bg-cream text-ink",
   },
   selected: {
     label: "Selected",
     // Gold: the organizer has picked them but they aren't locked in yet.
-    className: "border-gold/60 bg-gold/15 text-gold-dark",
-    notch: "bg-gold",
+    className: "bg-gold text-ink",
   },
-  confirmed: {
-    label: "Confirmed",
-    className: "border-success/50 bg-success/15 text-success",
-    notch: "bg-success",
-  },
-  rejected: {
-    label: "Rejected",
-    className: "border-primary/40 bg-primary/10 text-primary",
-    notch: "bg-primary",
-  },
+  confirmed: { label: "Confirmed", className: "bg-success text-cream" },
+  rejected: { label: "Rejected", className: "bg-error text-cream" },
   withdrawn: {
     label: "Withdrawn",
     // Deliberately the flattest of the five — the volunteer opted out,
     // it shouldn't compete for attention in a list.
-    className: "border-muted/40 bg-transparent text-muted",
-    notch: "bg-muted/60",
+    className: "bg-muted/25 text-ink/70",
   },
 };
 
@@ -59,19 +50,10 @@ const ORGANIZATION_STATUSES = {
     label: "Pending approval",
     // Same neutral treatment as `applied`: an org awaiting an admin is
     // waiting, not failing.
-    className: "border-muted/50 bg-muted/10 text-ink/70",
-    notch: "bg-muted",
+    className: "bg-cream text-ink",
   },
-  approved: {
-    label: "Approved",
-    className: "border-success/50 bg-success/15 text-success",
-    notch: "bg-success",
-  },
-  rejected: {
-    label: "Rejected",
-    className: "border-primary/40 bg-primary/10 text-primary",
-    notch: "bg-primary",
-  },
+  approved: { label: "Approved", className: "bg-success text-cream" },
+  rejected: { label: "Rejected", className: "bg-error text-cream" },
 };
 
 // events.status
@@ -79,28 +61,21 @@ const EVENT_STATUSES = {
   published: {
     label: "Published",
     // The only state in which volunteers can see and apply to the event.
-    className: "border-success/50 bg-success/15 text-success",
-    notch: "bg-success",
+    className: "bg-success text-cream",
   },
   closed: {
     label: "Closed",
     // Applications shut, but the event is still going ahead — neutral,
     // not negative.
-    className: "border-muted/50 bg-muted/10 text-ink/70",
-    notch: "bg-muted",
+    className: "bg-muted/25 text-ink/70",
   },
   completed: {
     label: "Completed",
     // Gold: the event ran and certificates can follow. An achievement,
     // not just an end state.
-    className: "border-gold/60 bg-gold/15 text-gold-dark",
-    notch: "bg-gold",
+    className: "bg-gold text-ink",
   },
-  cancelled: {
-    label: "Cancelled",
-    className: "border-primary/40 bg-primary/10 text-primary",
-    notch: "bg-primary",
-  },
+  cancelled: { label: "Cancelled", className: "bg-error text-cream" },
 };
 
 const FAMILIES = {
@@ -117,20 +92,20 @@ export default function StatusChip({ status, type = "application" }) {
   // wrong `type`, we want to see it rather than get a blank chip.
   const config = family[status] ?? {
     label: status ?? "Unknown",
-    className: "border-muted/40 bg-transparent text-muted",
-    notch: "bg-muted/60",
+    className: "bg-muted/25 text-ink/70",
   };
 
   return (
     <span
-      className={`relative inline-flex items-center overflow-hidden rounded-full border py-1 pl-4 pr-3 text-xs font-medium tracking-wide ${config.className}`}
+      className={`relative inline-flex items-center overflow-hidden rounded-full border-2 border-ink py-0.5 pl-4 pr-3 text-xs font-bold uppercase tracking-wide shadow-brutal-sm ${config.className}`}
     >
-      {/* Gold-seal notch: a small rotated square clipped by the chip's
-          own overflow-hidden, so it reads as a bite out of the left
-          edge rather than a floating dot. */}
+      {/* Seal notch: a small rotated square clipped by the chip's own
+          overflow-hidden, so it reads as a bite out of the left edge
+          rather than a floating dot. Ink on every variant now — against
+          solid fills a tinted notch disappeared. */}
       <span
         aria-hidden="true"
-        className={`absolute -left-1 top-1/2 h-2 w-2 -translate-y-1/2 rotate-45 ${config.notch}`}
+        className="absolute -left-1 top-1/2 h-2 w-2 -translate-y-1/2 rotate-45 bg-ink"
       />
       {config.label}
     </span>

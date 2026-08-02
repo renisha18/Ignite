@@ -13,7 +13,7 @@ import VolunteerTopBar from "../components/volunteer/VolunteerTopBar";
 
 export default function VolunteerLayout() {
   return (
-    <div className="flex min-h-screen bg-background text-ink">
+    <div className="flex min-h-screen bg-background text-ink antialiased">
       <VolunteerSidebar />
       <div className="flex min-w-0 flex-1 flex-col">
         <VolunteerTopBar />

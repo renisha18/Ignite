@@ -29,23 +29,24 @@ export default function OrganizerTopBar() {
   const { user, organization } = useAuth();
 
   return (
-    <header className="sticky top-0 z-10 flex items-center gap-4 border-b border-muted/30 bg-background/95 px-6 py-3 backdrop-blur">
+    <header className="sticky top-0 z-10 flex items-center gap-4 border-b-2 border-ink bg-background px-6 py-3">
       <div className="flex items-baseline gap-2">
-        <span className="font-display text-lg font-semibold tracking-tight text-primary">
+        <span className="font-display text-xl font-extrabold uppercase tracking-tight text-primary">
           Ignite
         </span>
-        <span className="hidden font-mono text-[10px] uppercase tracking-[0.18em] text-muted lg:inline">
+        <span className="hidden font-mono text-[10px] font-bold uppercase tracking-[0.18em] text-muted lg:inline">
           Rotaract
         </span>
       </div>
 
-      {/* Decorative gold rule separating wordmark from the org identity. */}
-      <span aria-hidden="true" className="hidden h-5 w-px bg-gold/50 sm:block" />
+      {/* Gold rule separating wordmark from the org identity — thickened
+          to match the border weight used everywhere else. */}
+      <span aria-hidden="true" className="hidden h-5 w-0.5 bg-gold sm:block" />
 
       <div className="flex min-w-0 flex-1 items-center gap-3">
         {organization && (
           <>
-            <span className="truncate text-sm text-ink/80">
+            <span className="truncate text-sm font-bold text-ink">
               {organization.name}
             </span>
             {/* organizations.status — 'pending' until an admin approves.
@@ -57,7 +58,7 @@ export default function OrganizerTopBar() {
       </div>
 
       <div
-        className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full border border-gold/60 bg-primary/10 font-mono text-xs font-semibold text-primary"
+        className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg border-2 border-ink bg-primary font-mono text-xs font-bold text-cream shadow-brutal-sm"
         title={user?.fullName ?? "Account"}
       >
         {initialsOf(user?.fullName)}

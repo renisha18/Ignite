@@ -3,16 +3,25 @@
 // don't have permission to do that") rather than a generic client
 // message — this is what "display backend validation messages
 // properly" means in practice. One component, two variants.
+//
+// On theme tokens now rather than raw Tailwind reds: `error` and `gold`
+// are declared in index.css, so an alert can't drift from the rest of
+// the palette. Semantics are unchanged — error stays red and visibly
+// distinct from the maroon brand, info stays gold.
+const VARIANTS = {
+  error: "bg-error text-cream",
+  info: "bg-gold text-ink",
+};
+
 export default function Alert({ variant = "error", children }) {
   if (!children) return null;
 
-  const styles =
-    variant === "error"
-      ? "bg-red-50 border-red-200 text-red-700"
-      : "bg-gold-light/40 border-gold text-maroon-dark";
-
   return (
-    <div className={`rounded-lg border px-3 py-2 text-sm ${styles}`}>
+    <div
+      className={`rounded-lg border-2 border-ink px-3 py-2 text-sm font-semibold shadow-brutal-sm ${
+        VARIANTS[variant] ?? VARIANTS.error
+      }`}
+    >
       {children}
     </div>
   );

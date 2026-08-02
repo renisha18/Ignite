@@ -21,18 +21,19 @@ export default function VolunteerTopBar() {
   const { user } = useAuth();
 
   return (
-    <header className="sticky top-0 z-10 flex items-center gap-4 border-b border-muted/30 bg-background/95 px-6 py-3 backdrop-blur">
+    <header className="sticky top-0 z-10 flex items-center gap-4 border-b-2 border-ink bg-background px-6 py-3">
       <div className="flex items-baseline gap-2">
-        <span className="font-display text-lg font-semibold tracking-tight text-primary">
+        <span className="font-display text-xl font-extrabold uppercase tracking-tight text-primary">
           Ignite
         </span>
-        <span className="hidden font-mono text-[10px] uppercase tracking-[0.18em] text-muted lg:inline">
+        <span className="hidden font-mono text-[10px] font-bold uppercase tracking-[0.18em] text-muted lg:inline">
           Rotaract
         </span>
       </div>
 
-      {/* Decorative gold rule separating wordmark from the tools. */}
-      <span aria-hidden="true" className="hidden h-5 w-px bg-gold/50 sm:block" />
+      {/* Gold rule separating wordmark from the tools — thickened to
+          match the border weight used everywhere else. */}
+      <span aria-hidden="true" className="hidden h-5 w-0.5 bg-gold sm:block" />
 
       <div className="min-w-0 flex-1">
         <label className="sr-only" htmlFor="volunteer-search">
@@ -43,7 +44,7 @@ export default function VolunteerTopBar() {
           type="search"
           placeholder="Search events…"
           disabled
-          className="w-full max-w-sm rounded-lg border border-muted/40 bg-transparent px-3 py-1.5 text-sm text-ink placeholder:text-muted focus:border-primary focus:outline-none disabled:cursor-not-allowed"
+          className="w-full max-w-sm rounded-lg border-2 border-ink bg-cream px-3 py-1.5 text-sm text-ink placeholder:text-muted focus:outline-none disabled:cursor-not-allowed disabled:opacity-60"
         />
       </div>
 
@@ -51,7 +52,7 @@ export default function VolunteerTopBar() {
         type="button"
         disabled
         aria-label="Notifications"
-        className="rounded-lg p-2 text-ink/70 transition hover:bg-ink/5 hover:text-ink disabled:cursor-not-allowed"
+        className="rounded-lg border-2 border-ink bg-gold p-1.5 text-ink transition-all duration-100 hover:bg-gold-light disabled:cursor-not-allowed disabled:opacity-60"
       >
         <svg
           className="h-[18px] w-[18px]"
@@ -69,7 +70,7 @@ export default function VolunteerTopBar() {
       </button>
 
       <div
-        className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full border border-gold/60 bg-primary/10 font-mono text-xs font-semibold text-primary"
+        className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg border-2 border-ink bg-primary font-mono text-xs font-bold text-cream shadow-brutal-sm"
         title={user?.fullName ?? "Account"}
       >
         {initialsOf(user?.fullName)}
